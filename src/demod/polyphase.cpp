@@ -1,9 +1,10 @@
-#include <iostream>
+#include <assert.h>
+#include <math.h>
 #include "polyphase.hpp"
 
 dsp::PolyphaseFilter::PolyphaseFilter(std::vector<float> coeffs, unsigned numPhases)
 {
-	_size = ceil(coeffs.size() / numPhases);
+	_size = ceilf(coeffs.size() / numPhases);
 	_numPhases = numPhases;
 	_coeffs = coeffs;
 	_mem = new float[coeffs.size() / numPhases];
@@ -53,10 +54,8 @@ dsp::PolyphaseFilter::sincCoeffs(int order, float cutoff, int numPhases)
 	for (j=0; j<numPhases; j++) {
 		for (i=0; i<taps; i++) {
 			coeffs[j*taps + i] = sinc_coeff(cutoff/numPhases, i*numPhases + j, taps*numPhases, numPhases);
-			std::cout << coeffs[j*taps + i] << " ";
 		}
 	}
-	std::cout << std::endl;
 
 	return coeffs;
 }

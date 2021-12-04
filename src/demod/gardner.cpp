@@ -56,8 +56,8 @@ dsp::GardnerResampler::run()
 {
 	float sample;
 	int i, phase, count, outCount;
-	assert(generic_block<GardnerResampler>::_block_init);
 
+	assert(generic_block<GardnerResampler>::_block_init);
 	if ((count = _in->read()) < 0) return -1;
 
 	outCount = 0;

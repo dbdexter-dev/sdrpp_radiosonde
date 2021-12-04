@@ -27,8 +27,8 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	fmDemod.init(vfo->output, bw, bw/2.0f);
 	resampler.init(&fmDemod.out, symrate, 0.707, symrate/250, symrate/1e4);
 	slicer.init(&resampler.out);
-	packetizer.init(&slicer.out, RS41_SYNCWORD, RS41_SYNCLEN, RS41_FRAME_LEN);
-	sink.init(&packetizer.out, bitstreamHandler, this);
+	rs41Decoder.init(&slicer.out);
+	sink.init(&rs41Decoder.out, sondeDataHandler, this);
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
 }
@@ -46,13 +46,13 @@ RadiosondeDecoderModule::enable() {
 	fmDemod.setInput(vfo->output);
 	resampler.setInput(&fmDemod.out);
 	slicer.setInput(&resampler.out);
-	packetizer.setInput(&slicer.out);
-	sink.setInput(&packetizer.out);
+	rs41Decoder.setInput(&slicer.out);
+	sink.setInput(&rs41Decoder.out);
 
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
-	packetizer.start();
+	rs41Decoder.start();
 	sink.start();
 	enabled = true;
 }
@@ -60,7 +60,7 @@ RadiosondeDecoderModule::enable() {
 void
 RadiosondeDecoderModule::disable() {
 	sink.stop();
-	packetizer.stop();
+	rs41Decoder.stop();
 	slicer.stop();
 	resampler.stop();
 	fmDemod.stop();
@@ -101,13 +101,10 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 }
 
 void
-RadiosondeDecoderModule::bitstreamHandler(uint8_t *data, int count, void *ctx)
+RadiosondeDecoderModule::sondeDataHandler(SondeData *data, int count, void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
-
-	for (; count>0; count--) {
-		std::cout << *data++;
-	}
+	_this->lastData = data[count-1];
 }
 /* }}} */
 

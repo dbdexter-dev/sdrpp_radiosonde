@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dsp/block.h>
+#include <vector>
 
 namespace dsp {
 	class PolyphaseFilter {

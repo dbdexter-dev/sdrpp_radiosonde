@@ -1,54 +1,56 @@
 #include <iostream>
-#include "packetizer.hpp"
+#include "framer.hpp"
+extern "C" {
 #include "utils.h"
+}
 
 #define CEILDIV(x, y) (((x)+((y)-1))/(y))
 
 static inline int inverseCorrelateU64(uint64_t x, uint64_t y);
 static void bitcpy(uint8_t *dst, uint8_t *src, size_t offset, size_t bits);
 
-dsp::Packetizer::Packetizer(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int packetLen)
+dsp::Framer::Framer(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int frameLen)
 {
-	init(in, syncWord, syncLen, packetLen);
+	init(in, syncWord, syncLen, frameLen);
 }
 
-dsp::Packetizer::~Packetizer()
+dsp::Framer::~Framer()
 {
-	if (!generic_block<Packetizer>::_block_init) return;
-	generic_block<Packetizer>::stop();
-	generic_block<Packetizer>::_block_init = false;
+	if (!generic_block<Framer>::_block_init) return;
+	generic_block<Framer>::stop();
+	generic_block<Framer>::_block_init = false;
 }
 
 void
-dsp::Packetizer::init(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int packetLen)
+dsp::Framer::init(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int frameLen)
 {
 	_in = in;
 	_syncWord = syncWord;
 	_syncLen = syncLen;
-	_packetLen = packetLen;
-	_rawData = new uint8_t[2*packetLen];
+	_frameLen = frameLen;
+	_rawData = new uint8_t[2*frameLen];
 	_state = READ;
 	_dataOffset = 0;
 
-	generic_block<Packetizer>::registerInput(_in);
-	generic_block<Packetizer>::registerOutput(&out);
-	generic_block<Packetizer>::_block_init = true;
+	generic_block<Framer>::registerInput(_in);
+	generic_block<Framer>::registerOutput(&out);
+	generic_block<Framer>::_block_init = true;
 }
 
 void
-dsp::Packetizer::setInput(stream<uint8_t> *in)
+dsp::Framer::setInput(stream<uint8_t> *in)
 {
-	generic_block<Packetizer>::tempStop();
-	generic_block<Packetizer>::unregisterInput(_in);
+	generic_block<Framer>::tempStop();
+	generic_block<Framer>::unregisterInput(_in);
 	_in = in;
 	_state = READ;
 	_dataOffset = 0;
-	generic_block<Packetizer>::registerInput(_in);
-	generic_block<Packetizer>::tempStart();
+	generic_block<Framer>::registerInput(_in);
+	generic_block<Framer>::tempStart();
 }
 
 int
-dsp::Packetizer::run()
+dsp::Framer::run()
 {
 	int i, bitOffset, inverted, numBytes, count, outCount;
 	int chunkSize;
@@ -63,8 +65,8 @@ dsp::Packetizer::run()
 		switch (_state) {
 
 			case READ:
-				/* Try to read a packet worth of bits */
-				numBytes = std::min(_packetLen - _dataOffset/8, count);
+				/* Try to read a frame worth of bits */
+				numBytes = std::min(_frameLen - _dataOffset/8, count);
 				memcpy(_rawData + CEILDIV(_dataOffset, 8), src, numBytes);
 
 				if (_dataOffset % 8) {
@@ -75,7 +77,7 @@ dsp::Packetizer::run()
 				_dataOffset += 8*numBytes;
 				src += numBytes;
 
-				/* If an entire packet is not available, return */
+				/* If an entire frame is not available, return */
 				if (count <= 0) {
 					_in->flush();
 					if (outCount > 0 && !out.swap(outCount)) return -1;
@@ -83,14 +85,14 @@ dsp::Packetizer::run()
 				}
 
 				/* Find offset with the highest correlation */
-				_syncOffset = correlateU64(&inverted, _rawData, _packetLen);
+				_syncOffset = correlateU64(&inverted, _rawData, _frameLen);
 				_state = DEOFFSET;
 				__attribute__((fallthrough));
 
 			case DEOFFSET:
 
 				/* Try to read enough bits to undo the offset */
-				numBytes = std::min(_packetLen - (_dataOffset-_syncOffset)/8, count);
+				numBytes = std::min(_frameLen - (_dataOffset-_syncOffset)/8, count);
 				memcpy(_rawData + CEILDIV(_dataOffset, 8), src, numBytes);
 
 				if (_dataOffset % 8) {
@@ -100,21 +102,21 @@ dsp::Packetizer::run()
 				count -= numBytes;
 				_dataOffset += 8*numBytes;
 
-				/* If an entire packet is not available, return */
+				/* If an entire frame is not available, return */
 				if (count <= 0) {
 					_in->flush();
 					if (outCount > 0 && !out.swap(outCount)) return -1;
 					return outCount;
 				}
 
-				/* Copy bits into a new packet */
-				bitcpy(_rawData, _rawData, _syncOffset, 8*_packetLen);
-				for (i=0; i<_packetLen; i++) {
+				/* Copy bits into a new frame */
+				bitcpy(_rawData, _rawData, _syncOffset, 8*_frameLen);
+				for (i=0; i<_frameLen; i++) {
 					out.writeBuf[outCount++] = _rawData[i];
 				}
 
 				/* If the offset is not byte-aligned, copy the last bits to the
-				 * beginning of the new packet */
+				 * beginning of the new frame */
 				bitcpy(_rawData, _rawData, _syncOffset, 8);
 				_dataOffset = _syncOffset%8;
 				_state = READ;
@@ -135,7 +137,7 @@ dsp::Packetizer::run()
 
 /* Private methods {{{ */
 int
-dsp::Packetizer::correlateU64(int *inverted, uint8_t *packet, int len)
+dsp::Framer::correlateU64(int *inverted, uint8_t *frame, int len)
 {
 	int i, j;
 	int corr, bestCorr, bestOffset;
@@ -146,7 +148,7 @@ dsp::Packetizer::correlateU64(int *inverted, uint8_t *packet, int len)
 
 	window = 0;
 	for (i=0; i<_syncLen; i++) {
-		window = window << 8 | *packet++;
+		window = window << 8 | *frame++;
 	}
 
 	bestOffset = 0;
@@ -158,7 +160,7 @@ dsp::Packetizer::correlateU64(int *inverted, uint8_t *packet, int len)
 
 	/* Search for the position with the highest correlation */
 	for (i=0; i<len - _syncLen; i++) {
-		tmp = *packet++;
+		tmp = *frame++;
 
 		/* For each bit in the byte */
 		for (j=0; j<8; j++) {

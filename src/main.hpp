@@ -3,10 +3,9 @@
 #include <module.h>
 #include <dsp/demodulator.h>
 #include "decode/common.hpp"
+#include "decode/rs41/decoder.hpp"
 #include "demod/gardner.hpp"
 #include "demod/slicer.hpp"
-#include "decode/rs41.hpp"
-#include "decode/packetizer.hpp"
 
 class RadiosondeDecoderModule : public ModuleManager::Instance {
 public:
@@ -27,10 +26,10 @@ private:
 	dsp::FloatFMDemod fmDemod;
 	dsp::GardnerResampler resampler;
 	dsp::Slicer slicer;
-	dsp::Packetizer packetizer;
-	dsp::HandlerSink<uint8_t> sink;
-	SondeInfoStruct sondeInfo;
+	RS41Decoder rs41Decoder;
+	dsp::HandlerSink<SondeData> sink;
+	SondeData lastData;
 
 	static void menuHandler(void *ctx);
-	static void bitstreamHandler(uint8_t *data, int count, void *ctx);
+	static void sondeDataHandler(SondeData *data, int count, void *ctx);
 };

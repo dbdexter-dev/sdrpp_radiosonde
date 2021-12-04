@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 project(radiosonde_decoder)
 
-file(GLOB_RECURSE SRC "src/*.cpp")
+file(GLOB_RECURSE SRC "src/*.c" "src/*.cpp")
 include_directories("src/")
 
 add_library(radiosonde_decoder SHARED ${SRC})

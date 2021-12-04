@@ -1,50 +1,15 @@
 #pragma once
 
-#include <inttypes.h>
+#include <stdint.h>
+#define CCITT_FALSE_INIT 0xFFFF
+#define CCITT_FALSE_POLY 0x1021
+
+/* CRC16 checksum */
+uint16_t crc16(uint16_t poly, uint16_t init, uint8_t *data, int len);
 
 /* Misaligned bit copy (source is misaligned) */
-static void
-bitcpy(uint8_t *dst, uint8_t *src, int offset, int bits)
-{
-	src += offset / 8;
-	offset %= 8;
-
-	/* All but last reads */
-	for (; bits > 8; bits -= 8) {
-		*dst    = *src++ << offset;
-		*dst++ |= *src >> (8 - offset);
-	}
-
-	/* Last read */
-	if (offset + bits < 8) {
-		*dst = (*src << offset) & ~((1 << (8 - bits)) - 1);
-	} else {
-		*dst  = *src++ << offset;
-		*dst |= *src >> (8 - offset);
-		*dst &= ~((1 << (8-bits)) - 1);
-	}
-}
-
+void bitcpy(uint8_t *dst, uint8_t *src, int offset, int bits);
 
 /* Misaligned bit copy (destination is misaligned) */
-static void
-bitpack(uint8_t *dst, uint8_t *src, int offset, int bits)
-{
-	dst += offset/8;
-	offset %= 8;
+void bitpack(uint8_t *dst, uint8_t *src, int offset, int bits);
 
-	*dst &= ~((1 << (8-offset)) - 1);
-
-	for (; bits > 8; bits -= 8) {
-		*dst++ |= *src >> offset;
-		*dst    = *src++ << (8 - offset);
-	}
-
-	if (offset + bits < 8) {
-		*dst = (*src >> offset) & ~((1 << (8-bits)) - 1);
-	} else {
-		*dst++ |= *src >> offset;
-		*dst    = *src << (8 - offset);
-		*dst &= ~((1 << (8-bits)) - 1);
-	}
-}
