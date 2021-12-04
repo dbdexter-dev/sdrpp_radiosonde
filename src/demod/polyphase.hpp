@@ -16,7 +16,7 @@ namespace dsp {
 		int getNumPhases() { return _numPhases; };
 
 	private:
-		std::vector<float> _mem;
+		float *_mem;
 		std::vector<float> _coeffs;
 		unsigned _size, _numPhases, _idx;
 

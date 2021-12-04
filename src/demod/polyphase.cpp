@@ -1,11 +1,12 @@
 #include <iostream>
 #include "polyphase.hpp"
 
-dsp::PolyphaseFilter::PolyphaseFilter(std::vector<float> coeffs, unsigned numPhases) : _mem(coeffs.size() / numPhases)
+dsp::PolyphaseFilter::PolyphaseFilter(std::vector<float> coeffs, unsigned numPhases)
 {
 	_size = ceil(coeffs.size() / numPhases);
 	_numPhases = numPhases;
 	_coeffs = coeffs;
+	_mem = new float[coeffs.size() / numPhases];
 	_idx = 0;
 }
 

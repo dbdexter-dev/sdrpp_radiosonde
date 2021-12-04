@@ -14,6 +14,9 @@ dsp::GardnerResampler::GardnerResampler(stream<float> *in, float symFreq, float 
 
 dsp::GardnerResampler::~GardnerResampler()
 {
+	if (!generic_block<GardnerResampler>::_block_init) return;
+	generic_block<GardnerResampler>::stop();
+	generic_block<GardnerResampler>::_block_init = false;
 }
 
 void
@@ -29,7 +32,7 @@ dsp::GardnerResampler::init(stream<float> *in, float symFreq, float damp, float 
 	_avgDC = 0;
 	_state = 1;
 
-	_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2*symFreq, numPhases), numPhases);
+	_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2.0*symFreq, numPhases), numPhases);
 
 	update_alpha_beta(damp, bw);
 
@@ -69,23 +72,20 @@ dsp::GardnerResampler::run()
 			sample *= TARGET_MAG/_avgMagnitude;
 		}
 
-
 		/* Feed sample to oversampling filter */
 		_flt.forward(sample);
 
 		/* Check if any of the filter phases corresponds to a slot to sample */
 		for (phase = 0; phase < _flt.getNumPhases(); phase++) {
 			switch (advance_timeslot()) {
-				case 1:     /* Inter-sample slot */
+				case 1:
+					/* Inter-sample slot */
 					_interSample = _flt.get(phase);
 					break;
-				case 2:     /* Sample slot */
+				case 2:
+					/* Sample slot */
 					sample = _flt.get(phase);
-
-					/* Update symbol clock estimate */
 					retime(sample);
-
-					/* Write symbol to output */
 					out.writeBuf[outCount] = sample;
 					outCount++;
 					break;

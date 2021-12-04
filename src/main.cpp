@@ -5,7 +5,6 @@
 #include <module.h>
 #include <signal_path/signal_path.h>
 #include "main.hpp"
-#include "demod/gardner.hpp"
 
 #define SYMRATE 4800.0
 #define DEFAULT_BANDWIDTH 10000
@@ -27,7 +26,9 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	fmDemod.init(vfo->output, bw, bw/2.0f);
 	resampler.init(&fmDemod.out, symrate, 0.707, symrate/250, symrate/1e4);
-	sink.init(&resampler.out, fmStreamHandler, this);
+	slicer.init(&resampler.out);
+	packetizer.init(&slicer.out, RS41_SYNCWORD, RS41_SYNCLEN, RS41_FRAME_LEN);
+	sink.init(&packetizer.out, bitstreamHandler, this);
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
 }
@@ -44,24 +45,34 @@ RadiosondeDecoderModule::enable() {
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	fmDemod.setInput(vfo->output);
 	resampler.setInput(&fmDemod.out);
-	sink.setInput(&resampler.out);
+	slicer.setInput(&resampler.out);
+	packetizer.setInput(&slicer.out);
+	sink.setInput(&packetizer.out);
 
 	fmDemod.start();
 	resampler.start();
+	slicer.start();
+	packetizer.start();
 	sink.start();
 	enabled = true;
 }
+
 void
 RadiosondeDecoderModule::disable() {
 	sink.stop();
+	packetizer.stop();
+	slicer.stop();
+	resampler.stop();
 	fmDemod.stop();
 	sigpath::vfoManager.deleteVFO(vfo);
 	enabled = false;
 }
+
 bool
 RadiosondeDecoderModule::isEnabled() {
 	return enabled;
 }
+
 void
 RadiosondeDecoderModule::postInit() {
 }
@@ -90,20 +101,12 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 }
 
 void
-RadiosondeDecoderModule::fmStreamHandler(float *data, int count, void *ctx)
+RadiosondeDecoderModule::bitstreamHandler(uint8_t *data, int count, void *ctx)
 {
-	static char tmp = 0x00;
-	static int offset = 0;
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 
 	for (; count>0; count--) {
-		tmp = (tmp << 1) | (*data++ > 0 ? 1 : 0);
-		offset++;
-
-		if (offset >= 8) {
-			offset = 0;
-			std::cout << tmp;
-		}
+		std::cout << *data++;
 	}
 }
 /* }}} */

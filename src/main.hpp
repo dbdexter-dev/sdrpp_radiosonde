@@ -4,6 +4,9 @@
 #include <dsp/demodulator.h>
 #include "decode/common.hpp"
 #include "demod/gardner.hpp"
+#include "demod/slicer.hpp"
+#include "decode/rs41.hpp"
+#include "decode/packetizer.hpp"
 
 class RadiosondeDecoderModule : public ModuleManager::Instance {
 public:
@@ -23,9 +26,11 @@ private:
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
 	dsp::GardnerResampler resampler;
-	dsp::HandlerSink<float> sink;
+	dsp::Slicer slicer;
+	dsp::Packetizer packetizer;
+	dsp::HandlerSink<uint8_t> sink;
 	SondeInfoStruct sondeInfo;
 
 	static void menuHandler(void *ctx);
-	static void fmStreamHandler(float *data, int count, void *ctx);
+	static void bitstreamHandler(uint8_t *data, int count, void *ctx);
 };
