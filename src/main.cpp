@@ -1,11 +1,10 @@
+#include <filesystem>
 #include <gui/gui.h>
 #include <gui/style.h>
 #include <imgui.h>
-#include <iostream>
 #include <module.h>
 #include <signal_path/signal_path.h>
 #include <time.h>
-#include "decode/rs41/rs41.h"
 #include "main.hpp"
 
 #define SYMRATE 4800.0
@@ -43,6 +42,8 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	slicer.start();
 	framer.start();
 	enabled = true;
+	gpxFilename[0] = 0;
+	this->gpxOutput = false;
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
 }
@@ -86,6 +87,7 @@ RadiosondeDecoderModule::disable() {
 			break;
 	}
 	sigpath::vfoManager.deleteVFO(vfo);
+	gpxWriter.stopTrack();
 	lastData.init();
 	enabled = false;
 }
@@ -106,10 +108,11 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	const float width = ImGui::GetContentRegionAvailWidth();
 	char time[64];
+	bool gpxStatusChanged;
 
 	if (!_this->enabled) style::beginDisabled();
 
-	/* Type selection */
+	/* Type combobox {{{ */
 	ImGui::LeftLabel("Type");
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
 	if (ImGui::BeginCombo("##_radiosonde_type_", supportedTypes[_this->selectedType])) {
@@ -126,8 +129,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		}
 		ImGui::EndCombo();
 	}
-
-
+	/* }}} */
 	/* Sonde data display {{{ */
 	ImGui::SetNextItemWidth(width);
 	if (ImGui::BeginTable("split", 2, ImGuiTableFlags_SizingFixedFit)) {
@@ -197,7 +199,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Heading");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			ImGui::Text("%.0f'", _this->lastData.hdg);
+			ImGui::Text("%.0f°", _this->lastData.hdg);
 		}
 
 		ImGui::TableNextRow();
@@ -218,7 +220,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
-			ImGui::Text("%.1f'C", _this->lastData.temp);
+			ImGui::Text("%.1f°C", _this->lastData.temp);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 		}
 
@@ -238,7 +240,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
-			ImGui::Text("%.1f'C", _this->lastData.dewpt);
+			ImGui::Text("%.1f°C", _this->lastData.dewpt);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 		}
 
@@ -255,6 +257,13 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::EndTable();
 	}
 	/* }}} */
+	/* GPX output file {{{ */
+	gpxStatusChanged = ImGui::Checkbox("GPX track", &_this->gpxOutput);
+	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+	ImGui::InputText("##_gpx_fname", _this->gpxFilename, sizeof(gpxFilename)-1,
+			_this->gpxOutput ? ImGuiInputTextFlags_ReadOnly : 0);
+	if (gpxStatusChanged) onGPXOutputChanged(ctx);
+	/* }}} */
 
 	if (!_this->enabled) style::endDisabled();
 }
@@ -264,6 +273,20 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	_this->lastData = *data;
+
+	_this->gpxWriter.startTrack(data->serial.c_str());
+	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt);
+}
+
+void
+RadiosondeDecoderModule::onGPXOutputChanged(void *ctx)
+{
+	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
+	if (_this->gpxOutput) {
+		_this->gpxWriter.init(_this->gpxFilename);
+	} else {
+		_this->gpxWriter.deinit();
+	}
 }
 
 void

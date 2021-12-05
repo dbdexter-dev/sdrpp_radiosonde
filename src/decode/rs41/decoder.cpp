@@ -207,7 +207,7 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 
 			info->temp = temp(ptu);
 			info->rh = rh(ptu);
-			info->pressure = pressure(ptu);
+			if (pressure(ptu) > 0) info->pressure = pressure(ptu);  /* Pressure sensor is optional */
 			info->dewpt = dewpt(info->temp, info->rh);
 			break;
 		case RS41_SFTYPE_GPSPOS:
