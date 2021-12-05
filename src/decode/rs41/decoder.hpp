@@ -11,16 +11,16 @@ extern "C" {
 class RS41Decoder : public dsp::generic_block<RS41Decoder> {
 public:
 	RS41Decoder();
-	RS41Decoder(dsp::stream<uint8_t> *in);
+	RS41Decoder(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx);
 	~RS41Decoder();
 
-	void init(dsp::stream<uint8_t> *in);
+	void init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx);
 	void setInput(dsp::stream<uint8_t> *in);
 	int run() override;
 
-	dsp::stream<SondeData> out;
-
 private:
+	void *_ctx;
+	void (*_handler)(SondeData *data, void *ctx);
 	dsp::stream<uint8_t> *_in;
 	correct_reed_solomon *_rs;
 	RS41Calibration _calibData;

@@ -28,9 +28,8 @@ private:
 	dsp::Slicer slicer;
 	dsp::Framer framer;
 	RS41Decoder rs41Decoder;
-	dsp::HandlerSink<SondeData> sink;
 	SondeData lastData;
 
 	static void menuHandler(void *ctx);
-	static void sondeDataHandler(SondeData *data, int count, void *ctx);
+	static void sondeDataHandler(SondeData *data, void *ctx);
 };

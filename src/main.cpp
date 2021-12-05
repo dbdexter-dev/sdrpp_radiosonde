@@ -30,8 +30,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	resampler.init(&fmDemod.out, symrate, 0.707, symrate/250, symrate/1e4);
 	slicer.init(&resampler.out);
 	framer.init(&slicer.out, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN);
-	rs41Decoder.init(&framer.out);
-	sink.init(&rs41Decoder.out, sondeDataHandler, this);
+	rs41Decoder.init(&framer.out, sondeDataHandler, this);
 
 	lastData.lat = lastData.lon = lastData.alt = 0;
 
@@ -40,7 +39,6 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	slicer.start();
 	framer.start();
 	rs41Decoder.start();
-	sink.start();
 	enabled = true;
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
@@ -61,20 +59,17 @@ RadiosondeDecoderModule::enable() {
 	slicer.setInput(&resampler.out);
 	framer.setInput(&slicer.out);
 	rs41Decoder.setInput(&framer.out);
-	sink.setInput(&rs41Decoder.out);
 
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
 	framer.start();
 	rs41Decoder.start();
-	sink.start();
 	enabled = true;
 }
 
 void
 RadiosondeDecoderModule::disable() {
-	sink.stop();
 	rs41Decoder.stop();
 	framer.stop();
 	slicer.stop();
@@ -115,6 +110,14 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 
 		ImGui::TableNextRow();
 		ImGui::TableNextColumn();
+		ImGui::Text("Frame no.");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", _this->lastData.seq);
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
 		ImGui::Text("Latitude");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
@@ -129,6 +132,39 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			ImGui::Text("%8.5f%c", fabs(_this->lastData.lon), (_this->lastData.lon >= 0 ? 'E' : 'W'));
 		}
 
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Altitude");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			ImGui::Text("%.1fm", _this->lastData.alt);
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Speed");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			ImGui::Text("%.1fm/s", _this->lastData.spd);
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Heading");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			ImGui::Text("%.0f'", _this->lastData.hdg);
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Climb");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			ImGui::Text("%.1fm/s", _this->lastData.climb);
+		}
+
+
 		ImGui::EndTable();
 	}
 
@@ -136,10 +172,10 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 }
 
 void
-RadiosondeDecoderModule::sondeDataHandler(SondeData *data, int count, void *ctx)
+RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
-	_this->lastData = data[count-1];
+	_this->lastData = *data;
 }
 /* }}} */
 

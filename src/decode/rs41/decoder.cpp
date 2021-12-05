@@ -27,9 +27,9 @@ RS41Decoder::RS41Decoder()
 	                                  RS41_REEDSOLOMON_T);
 }
 
-RS41Decoder::RS41Decoder(dsp::stream<uint8_t> *in)
+RS41Decoder::RS41Decoder(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx)
 {
-	init(in);
+	init(in, handler, ctx);
 }
 
 RS41Decoder::~RS41Decoder()
@@ -40,9 +40,11 @@ RS41Decoder::~RS41Decoder()
 }
 
 void
-RS41Decoder::init(dsp::stream<uint8_t> *in)
+RS41Decoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx)
 {
 	_in = in;
+	_ctx = ctx;
+	_handler = handler;
 	_rs = correct_reed_solomon_create(RS41_REEDSOLOMON_POLY,
 	                                  RS41_REEDSOLOMON_FIRST_ROOT,
 	                                  RS41_REEDSOLOMON_ROOT_SKIP,
@@ -52,7 +54,6 @@ RS41Decoder::init(dsp::stream<uint8_t> *in)
 
 
 	generic_block<RS41Decoder>::registerInput(_in);
-	generic_block<RS41Decoder>::registerOutput(&out);
 	generic_block<RS41Decoder>::_block_init = true;
 }
 
@@ -69,7 +70,7 @@ RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 int
 RS41Decoder::run()
 {
-	SondeData wip;
+	SondeData sondeData;
 	RS41Frame *frame;
 	RS41Subframe *subframe;
 	int offset, outCount, numFrames, bytesLeft;
@@ -101,15 +102,14 @@ RS41Decoder::run()
 			if (!crcCheck(subframe)) continue;
 
 			/* Update the generic info struct with the data inside the subframe */
-			updateSondeData(&wip, subframe);
+			updateSondeData(&sondeData, subframe);
 		}
 
-		out.writeBuf[outCount] = wip;
+		_handler(&sondeData, _ctx);
 		outCount++;
 	}
 
 	_in->flush();
-	if (outCount > 0 && !out.swap(outCount)) return -1;
 	return outCount;
 }
 
@@ -198,6 +198,7 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			info->serial = status->serial;
 			info->serial[RS41_SERIAL_LEN] = 0;
 			info->burstkill = _calibData.burstkill_timer == 0xFFFF ? -1 : _calibData.burstkill_timer;
+			info->seq = status->frame_seq;
 			break;
 		case RS41_SFTYPE_PTU:
 			ptu = (RS41Subframe_PTU*)subframe;
