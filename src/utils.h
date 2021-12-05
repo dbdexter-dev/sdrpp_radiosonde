@@ -13,3 +13,37 @@ void bitcpy(uint8_t *dst, uint8_t *src, int offset, int bits);
 /* Misaligned bit copy (destination is misaligned) */
 void bitpack(uint8_t *dst, uint8_t *src, int offset, int bits);
 
+/**
+ * Calculate pressure at a given altitude
+ *
+ * @param alt altitude
+ * @return pressure at that altitude (hPa)
+ */
+float altitude_to_pressure(float alt);
+float pressure_to_altitude(float p);
+
+/**
+ * Calculate dew point
+ *
+ * @param temp temperature (degrees Celsius)
+ * @param rh relative humidity (0-100%)
+ * @return dew point (degrees Celsius)
+ */
+float dewpt(float temp, float rh);
+
+/**
+ * Calculate saturation mixing ratio given temperature and pressure
+ *
+ * @param temp temperature (degrees Celsius)
+ * @param p pressure (hPa)
+ * @return saturation mixing ratio (g/kg)
+ */
+float sat_mixing_ratio(float temp, float p);
+
+/**
+ * Calculate water vapor saturation pressure at the given temperature
+ *
+ * @param temp temperatuer (degrees Celsius)
+ * @return saturation pressure (hPa)
+ */
+float wv_sat_pressure(float temp);

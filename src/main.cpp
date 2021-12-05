@@ -118,6 +118,10 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 
 		ImGui::TableNextRow();
 		ImGui::TableNextColumn();
+		ImGui::Text(" ");
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
 		ImGui::Text("Latitude");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
@@ -164,6 +168,49 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			ImGui::Text("%.1fm/s", _this->lastData.climb);
 		}
 
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text(" ");
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Temperature");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			ImGui::Text("%.1f'C", _this->lastData.temp);
+			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Relative Humidity");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			ImGui::Text("%.1f%%", _this->lastData.rh);
+			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Dew point");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			ImGui::Text("%.1f'C", _this->lastData.dewpt);
+			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Pressure");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			ImGui::Text("%.1fhPa", _this->lastData.pressure);
+			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+		}
 
 		ImGui::EndTable();
 	}

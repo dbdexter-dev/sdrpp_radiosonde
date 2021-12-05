@@ -32,4 +32,9 @@ private:
 	bool crcCheck(RS41Subframe *subframe);
 	void updateCalibData(RS41Subframe_Status *status);
 	void updateSondeData(SondeData *info, RS41Subframe *subframe);
+
+	float temp(RS41Subframe_PTU *ptu);
+	float rh(RS41Subframe_PTU *ptu);
+	float rh_temp(RS41Subframe_PTU *ptu);
+	float pressure(RS41Subframe_PTU *ptu);
 };

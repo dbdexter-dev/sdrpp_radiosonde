@@ -83,6 +83,7 @@ RS41Decoder::run()
 
 	/* For each frame that was received */
 	for (int i=0; i<numFrames; i++) {
+		sondeData.pressure = -1;
 		frame = (RS41Frame*)(_in->readBuf + i*sizeof(*frame));
 
 		/* Descramble and error correct */
@@ -202,7 +203,11 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			break;
 		case RS41_SFTYPE_PTU:
 			ptu = (RS41Subframe_PTU*)subframe;
-			/* TODO */
+
+			info->temp = temp(ptu);
+			info->rh = rh(ptu);
+			info->pressure = pressure(ptu);
+			info->dewpt = dewpt(info->temp, info->rh);
 			break;
 		case RS41_SFTYPE_GPSPOS:
 			gpspos = (RS41Subframe_GPSPos*)subframe;
@@ -215,6 +220,8 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 
 			ecef_to_lla(&info->lat, &info->lon, &info->alt, x, y, z);
 			ecef_to_spd_hdg(&info->spd, &info->hdg, &info->climb, info->lat, info->lon, dx, dy, dz);
+
+			if (info->pressure < 0) info->pressure = altitude_to_pressure(info->alt);
 
 			break;
 		case RS41_SFTYPE_GPSINFO:
@@ -247,5 +254,142 @@ RS41Decoder::updateCalibData(RS41Subframe_Status* status)
 		if (_calibDataBitmap[i]) return;
 	}
 	_calibrated = true;
+}
+
+
+float
+RS41Decoder::temp(RS41Subframe_PTU *ptu)
+{
+	const float adc_main = (uint32_t)ptu->temp_main[0]
+	                      | (uint32_t)ptu->temp_main[1] << 8
+	                      | (uint32_t)ptu->temp_main[2] << 16;
+	const float adc_ref1 = (uint32_t)ptu->temp_ref1[0]
+	                      | (uint32_t)ptu->temp_ref1[1] << 8
+	                      | (uint32_t)ptu->temp_ref1[2] << 16;
+	const float adc_ref2 = (uint32_t)ptu->temp_ref2[0]
+	                      | (uint32_t)ptu->temp_ref2[1] << 8
+	                      | (uint32_t)ptu->temp_ref2[2] << 16;
+
+	float adc_raw, r_raw, r_t, t_uncal, t_cal;
+	int i;
+
+	/* If no reference or no calibration data, retern */
+	if (adc_ref2 - adc_ref1 == 0) return NAN;
+
+	/* Compute ADC gain and bias */
+	adc_raw = (adc_main - adc_ref1) / (adc_ref2 - adc_ref1);
+
+	/* Compute resistance */
+	r_raw = _calibData.t_ref[0] + (_calibData.t_ref[1] - _calibData.t_ref[0])*adc_raw;
+	r_t = r_raw * _calibData.t_calib_coeff[0];
+
+	/* Compute temperature based on corrected resistance */
+	t_uncal = _calibData.t_temp_poly[0]
+	     + _calibData.t_temp_poly[1]*r_t
+	     + _calibData.t_temp_poly[2]*r_t*r_t;
+
+	t_cal = 0;
+	for (i=6; i>0; i--) {
+		t_cal *= t_uncal;
+		t_cal += _calibData.t_calib_coeff[i];
+	}
+	t_cal += t_uncal;
+
+	return t_cal;
+}
+
+float
+RS41Decoder::rh(RS41Subframe_PTU *ptu)
+{
+	float adc_main = (uint32_t)ptu->humidity_main[0]
+	                       | (uint32_t)ptu->humidity_main[1] << 8
+	                       | (uint32_t)ptu->humidity_main[2] << 16;
+	float adc_ref1 = (uint32_t)ptu->humidity_ref1[0]
+	                       | (uint32_t)ptu->humidity_ref1[1] << 8
+	                       | (uint32_t)ptu->humidity_ref1[2] << 16;
+	float adc_ref2 = (uint32_t)ptu->humidity_ref2[0]
+	                       | (uint32_t)ptu->humidity_ref2[1] << 8
+	                       | (uint32_t)ptu->humidity_ref2[2] << 16;
+
+	int i, j;
+	float f1, f2;
+	float adc_raw, c_raw, c_cal, rh_uncal, rh_cal, rh_temp_uncal, rh_temp_cal, t_temp;
+
+	if (adc_ref2 - adc_ref1 == 0) return NAN;
+
+	/* Get RH sensor temperature and actual temperature */
+	rh_temp_uncal = rh_temp(ptu);
+	t_temp = temp(ptu);
+
+	/* Compute RH calibrated temperature */
+	rh_temp_cal = 0;
+	for (i=6; i>0; i--) {
+		rh_temp_cal *= rh_temp_uncal;
+		rh_temp_cal += _calibData.th_calib_coeff[i];
+	}
+	rh_temp_cal += rh_temp_uncal;
+
+	/* Get raw capacitance of the RH sensor */
+	adc_raw = (adc_main - adc_ref1) / (adc_ref2 - adc_ref1);
+	c_raw = _calibData.rh_ref[0] + adc_raw * (_calibData.rh_ref[1] - _calibData.rh_ref[0]);
+	c_cal = (c_raw / _calibData.rh_cap_calib[0] - 1) * _calibData.rh_cap_calib[1];
+
+	/* Derive raw RH% from capacitance and temperature response */
+	rh_uncal = 0;
+	rh_temp_cal = (rh_temp_cal - 20) / 180;
+	f1 = 1;
+	for (i=0; i<7; i++) {
+		f2 = 1;
+		for (j=0; j<6; j++) {
+			rh_uncal += f1 * f2 * _calibData.rh_calib_coeff[i][j];
+			f2 *= rh_temp_cal;
+		}
+		f1 *= c_cal;
+	}
+
+	/* Account for different temperature between air and RH sensor */
+	rh_cal = rh_uncal * wv_sat_pressure(rh_temp_uncal) / wv_sat_pressure(t_temp);
+	return fmax(0.0, fmin(100.0, rh_cal));
+}
+
+float
+RS41Decoder::rh_temp(RS41Subframe_PTU *ptu)
+{
+	const float adc_main = (uint32_t)ptu->temp_humidity_main[0]
+	                      | (uint32_t)ptu->temp_humidity_main[1] << 8
+	                      | (uint32_t)ptu->temp_humidity_main[2] << 16;
+	const float adc_ref1 = (uint32_t)ptu->temp_humidity_ref1[0]
+	                      | (uint32_t)ptu->temp_humidity_ref1[1] << 8
+	                      | (uint32_t)ptu->temp_humidity_ref1[2] << 16;
+	const float adc_ref2 = (uint32_t)ptu->temp_humidity_ref2[0]
+	                      | (uint32_t)ptu->temp_humidity_ref2[1] << 8
+	                      | (uint32_t)ptu->temp_humidity_ref2[2] << 16;
+
+	float adc_raw, r_raw, r_t, t_uncal;
+
+	/* If no reference or no calibration data, retern */
+	if (adc_ref2 - adc_ref1 == 0) return NAN;
+	if (!_calibData.t_ref[0] || !_calibData.t_ref[1]) return NAN;
+
+	/* Compute ADC gain and bias */
+	adc_raw = (adc_main - adc_ref1) / (adc_ref2 - adc_ref1);
+
+	/* Compute resistance */
+	r_raw = _calibData.t_ref[0] + adc_raw * (_calibData.t_ref[1] - _calibData.t_ref[0]);
+	r_t = r_raw * _calibData.th_calib_coeff[0];
+
+	/* Compute temperature based on corrected resistance */
+	t_uncal = _calibData.th_temp_poly[0]
+	     + _calibData.th_temp_poly[1]*r_t
+	     + _calibData.th_temp_poly[2]*r_t*r_t;
+
+	return t_uncal;
+}
+
+float
+RS41Decoder::pressure(RS41Subframe_PTU *ptu)
+{
+	/* TODO */
+	return 0;
 }
 /* }}} */
