@@ -8,7 +8,7 @@ PTUWriter::init(const char *fname)
 	_fd = fopen(fname, "wb");
 	if(!_fd) return false;
 
-	fprintf(_fd, "Epoch,Temperature,Relative humidity,Dew point,Pressure,Latitude,Longitude,Altitude\n");
+	fprintf(_fd, "Epoch,Temperature,Relative humidity,Dew point,Pressure,Altitude,Speed,Heading\n");
 
 	return true;
 }

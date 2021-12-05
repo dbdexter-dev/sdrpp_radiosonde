@@ -1,10 +1,11 @@
-#include <filesystem>
+#include <config.h>
 #include <gui/gui.h>
 #include <gui/style.h>
 #include <imgui.h>
 #include <module.h>
 #include <signal_path/signal_path.h>
 #include <time.h>
+#include <options.h>
 #include "main.hpp"
 
 #define SYMRATE 4800.0
@@ -15,18 +16,39 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 2, 0,
+    /* Version:         */ 0, 3, 0,
     /* Max instances    */ -1
 };
+
+ConfigManager config;
 
 const char *RadiosondeDecoderModule::supportedTypes[1] = { "RS41" };
 
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
+	bool created = false;
+	int typeToSelect;
+	std::string gpxPath, ptuPath;
+
 	this->name = name;
 	bw = DEFAULT_BANDWIDTH;
 	symrate = SYMRATE/bw;
 	selectedType = -1;
+
+	config.acquire();
+	if (!config.conf.contains(name)) {
+		config.conf[name]["gpxPath"] = "/tmp/radiosonde.gpx";
+		config.conf[name]["ptuPath"] = "/tmp/radiosonde_ptu.csv";
+		config.conf[name]["sondeType"] = 0;
+		created = true;
+	}
+	gpxPath = config.conf[name]["gpxPath"];
+	ptuPath = config.conf[name]["ptuPath"];
+	typeToSelect = config.conf[name]["sondeType"];
+	config.release(created);
+
+	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
+	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
 
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
@@ -36,14 +58,12 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	framer.init(&slicer.out, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN);
 	rs41Decoder.init(&framer.out, sondeDataHandler, this);
 
-	onTypeSelected(this, 0);    /* TODO load from config? */
+	onTypeSelected(this, typeToSelect);
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
 	framer.start();
 	enabled = true;
-	gpxFilename[0] = 0;
-	ptuFilename[0] = 0;
 	this->gpxOutput = false;
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
@@ -286,7 +306,7 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 
 	_this->gpxWriter.startTrack(data->serial.c_str());
 	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt);
-	_this->ptuWriter.addPoint(data->time, data->temp, data->rh, data->dewpt, data->pressure, 
+	_this->ptuWriter.addPoint(data->time, data->temp, data->rh, data->dewpt, data->pressure,
 			data->alt, data->spd, data->hdg);
 }
 
@@ -299,6 +319,12 @@ RadiosondeDecoderModule::onGPXOutputChanged(void *ctx)
 	} else {
 		_this->gpxWriter.deinit();
 	}
+
+	if (_this->gpxOutput) {
+		config.acquire();
+		config.conf[_this->name]["gpxPath"] = _this->gpxFilename;
+		config.release(true);
+	}
 }
 
 void
@@ -309,6 +335,11 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 		_this->ptuOutput = _this->ptuWriter.init(_this->ptuFilename);
 	} else {
 		_this->ptuWriter.deinit();
+	}
+	if (_this->ptuOutput) {
+		config.acquire();
+		config.conf[_this->name]["ptuPath"] = _this->ptuFilename;
+		config.release(true);
 	}
 }
 
@@ -335,12 +366,21 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	}
 
 	_this->selectedType = selection;
+	if (selection >= 0) {
+		config.acquire();
+		config.conf[_this->name]["sondeType"] = selection;
+		config.release(true);
+	}
 }
 /* }}} */
 
 
 /* Module exports {{{ */
 MOD_EXPORT void _INIT_() {
+    json def = json({});
+    config.setPath(options::opts.root + "/radiosonde_decoder_config.json");
+    config.load(def);
+    config.enableAutoSave();
 }
 
 MOD_EXPORT ModuleManager::Instance* _CREATE_INSTANCE_(std::string name) {
@@ -352,6 +392,8 @@ MOD_EXPORT void _DELETE_INSTANCE_(void *instance) {
 }
 
 MOD_EXPORT void _END_() {
+    config.disableAutoSave();
+    config.save();
 }
 
 /* }}} */
