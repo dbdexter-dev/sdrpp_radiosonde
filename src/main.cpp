@@ -1,12 +1,12 @@
-#include <iostream>
-#include <imgui.h>
 #include <gui/gui.h>
 #include <gui/style.h>
+#include <imgui.h>
+#include <iostream>
 #include <module.h>
 #include <signal_path/signal_path.h>
-#include <sstream>
-#include "main.hpp"
+#include <time.h>
 #include "decode/rs41/rs41.h"
+#include "main.hpp"
 
 #define SYMRATE 4800.0
 #define DEFAULT_BANDWIDTH 10000
@@ -86,6 +86,7 @@ RadiosondeDecoderModule::disable() {
 			break;
 	}
 	sigpath::vfoManager.deleteVFO(vfo);
+	lastData.init();
 	enabled = false;
 }
 
@@ -104,6 +105,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	const float width = ImGui::GetContentRegionAvailWidth();
+	char time[64];
 
 	if (!_this->enabled) style::beginDisabled();
 
@@ -128,7 +130,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 
 	/* Sonde data display {{{ */
 	ImGui::SetNextItemWidth(width);
-	if (ImGui::BeginTable("split", 2)) {
+	if (ImGui::BeginTable("split", 2, ImGuiTableFlags_SizingFixedFit)) {
 		ImGui::TableNextColumn();
 		ImGui::Text("Serial no.");
 		if (_this->enabled) {
@@ -142,6 +144,16 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
 			ImGui::Text("%d", _this->lastData.seq);
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Onboard time");
+		if (_this->enabled) {
+			if (strftime(time, sizeof(time), "%a %b %d %Y %H:%M:%S", gmtime(&_this->lastData.time))) {
+				ImGui::TableNextColumn();
+				ImGui::Text("%s", time);
+			}
 		}
 
 		ImGui::TableNextRow();
@@ -212,7 +224,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 
 		ImGui::TableNextRow();
 		ImGui::TableNextColumn();
-		ImGui::Text("Relative Humidity");
+		ImGui::Text("Humidity");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));

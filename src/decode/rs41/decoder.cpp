@@ -2,6 +2,7 @@
 #include <iostream>
 #include "decoder.hpp"
 #include "decode/gps/ecef.h"
+#include "decode/gps/time.h"
 #include "rs41.h"
 #include "utils.h"
 
@@ -226,7 +227,7 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			break;
 		case RS41_SFTYPE_GPSINFO:
 			gpsinfo = (RS41Subframe_GPSInfo*)subframe;
-			/* TODO */
+			info->time = gps_time_to_utc(gpsinfo->week, gpsinfo->ms);
 			break;
 		case RS41_SFTYPE_XDATA:
 			break;
