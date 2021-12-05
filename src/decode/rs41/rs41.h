@@ -38,6 +38,7 @@
 #define RS41_SFTYPE_XDATA 0x7E          /* Extended data */
 
 #define RS41_CALIB_FRAGSIZE 16          /* Size of each calibration fragment inside an info subframe */
+#define RS41_CALIB_FRAGCOUNT 50
 
 #define RS41_SERIAL_LEN 8               /* Length of the serial number, bytes */
 

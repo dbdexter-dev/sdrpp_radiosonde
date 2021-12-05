@@ -1,9 +1,9 @@
 #include <string.h>
+#include <iostream>
 #include "decoder.hpp"
+#include "decode/gps/ecef.h"
 #include "rs41.h"
-extern "C" {
 #include "utils.h"
-}
 
 /* Pseudorandom sequence, obtained by autocorrelating the extra data found at the end of frames
  * from a radiosonde with ozone sensor */
@@ -42,14 +42,16 @@ RS41Decoder::~RS41Decoder()
 void
 RS41Decoder::init(dsp::stream<uint8_t> *in)
 {
+	_in = in;
 	_rs = correct_reed_solomon_create(RS41_REEDSOLOMON_POLY,
 	                                  RS41_REEDSOLOMON_FIRST_ROOT,
 	                                  RS41_REEDSOLOMON_ROOT_SKIP,
 	                                  RS41_REEDSOLOMON_T);
-	_framer.init(in, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN);
+	memset(_calibDataBitmap, 0xFF, sizeof(_calibDataBitmap));
+	_calibDataBitmap[sizeof(_calibDataBitmap)-1] &= ~(1 << (7 - RS41_CALIB_FRAGCOUNT%8)) - 1;
 
 
-	generic_block<RS41Decoder>::registerInput(&_framer.out);
+	generic_block<RS41Decoder>::registerInput(_in);
 	generic_block<RS41Decoder>::registerOutput(&out);
 	generic_block<RS41Decoder>::_block_init = true;
 }
@@ -58,7 +60,9 @@ void
 RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 {
 	generic_block<RS41Decoder>::tempStop();
-	_framer.setInput(in);
+	generic_block<RS41Decoder>::unregisterInput(_in);
+	_in = in;
+	generic_block<RS41Decoder>::registerInput(_in);
 	generic_block<RS41Decoder>::tempStart();
 }
 
@@ -71,29 +75,30 @@ RS41Decoder::run()
 	int offset, outCount, numFrames, bytesLeft;
 
 	assert(generic_block<RS41Decoder>::_block_init);
-	if ((numFrames = _framer.out.read()) < 0) return -1;
+	if ((numFrames = _in->read()) < 0) return -1;
 
 	outCount = 0;
 	numFrames /= sizeof(*frame);
 
 	/* For each frame that was received */
 	for (int i=0; i<numFrames; i++) {
-		frame = (RS41Frame*)(_framer.out.readBuf + i*sizeof(*frame));
+		frame = (RS41Frame*)(_in->readBuf + i*sizeof(*frame));
 
 		/* Descramble and error correct */
 		descramble(frame);
 		if (_rs) rsCorrect(frame);
 
 		bytesLeft = RS41_DATA_LEN + (frame->extended_flag == RS41_FLAG_EXTENDED ? RS41_XDATA_LEN : 0);
-		while (bytesLeft > 0) {
+		offset = 0;
+		while (offset < bytesLeft) {
 			subframe = (RS41Subframe*)&frame->data[offset];
-			bytesLeft -= subframe->len + 4;
+			offset += subframe->len + 4;
 
 			/* Verify that end of the subframe is still within bounds */
-			if (bytesLeft < 0) break;
+			if (offset > bytesLeft) break;
 
 			/* Check subframe checksum */
-			if (!crcCheck(subframe)) break;
+			if (!crcCheck(subframe)) continue;
 
 			/* Update the generic info struct with the data inside the subframe */
 			updateSondeData(&wip, subframe);
@@ -103,7 +108,7 @@ RS41Decoder::run()
 		outCount++;
 	}
 
-	_framer.out.flush();
+	_in->flush();
 	if (outCount > 0 && !out.swap(outCount)) return -1;
 	return outCount;
 }
@@ -117,12 +122,12 @@ RS41Decoder::descramble(RS41Frame *frame)
 	uint8_t *rawFrame = (uint8_t*) frame;
 
 	/* Reorder bits in the frame and XOR with PRN sequence */
-	for (i=0; i<sizeof(frame); i++) {
+	for (i=0; i<sizeof(*frame); i++) {
 		tmp = 0;
 		for (int j=0; j<8; j++) {
 			tmp |= ((rawFrame[i] >> (7-j)) & 0x1) << j;
 		}
-		rawFrame[i] = tmp ^ _prn[i % RS41_PRN_PERIOD];
+		rawFrame[i] = 0xFF ^ tmp ^ _prn[i % RS41_PRN_PERIOD];
 	}
 }
 
@@ -177,14 +182,43 @@ RS41Decoder::crcCheck(RS41Subframe *subframe)
 void
 RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 {
+	RS41Subframe_Status *status;
+	RS41Subframe_PTU *ptu;
+	RS41Subframe_GPSInfo *gpsinfo;
+	RS41Subframe_GPSPos *gpspos;
+
+	float x, y, z, dx, dy, dz;
+
 	switch (subframe->type) {
 		case RS41_SFTYPE_INFO:
+			status = (RS41Subframe_Status*)subframe;
+			updateCalibData(status);
+
+			info->calibrated = _calibrated;
+			info->serial = status->serial;
+			info->serial[RS41_SERIAL_LEN] = 0;
+			info->burstkill = _calibData.burstkill_timer == 0xFFFF ? -1 : _calibData.burstkill_timer;
 			break;
 		case RS41_SFTYPE_PTU:
+			ptu = (RS41Subframe_PTU*)subframe;
+			/* TODO */
 			break;
 		case RS41_SFTYPE_GPSPOS:
+			gpspos = (RS41Subframe_GPSPos*)subframe;
+			x = gpspos->x / 100.0;
+			y = gpspos->y / 100.0;
+			z = gpspos->z / 100.0;
+			dx = gpspos->dx / 100.0;
+			dy = gpspos->dy / 100.0;
+			dz = gpspos->dz / 100.0;
+
+			ecef_to_lla(&info->lat, &info->lon, &info->alt, x, y, z);
+			ecef_to_spd_hdg(&info->spd, &info->hdg, &info->climb, info->lat, info->lon, dx, dy, dz);
+
 			break;
 		case RS41_SFTYPE_GPSINFO:
+			gpsinfo = (RS41Subframe_GPSInfo*)subframe;
+			/* TODO */
 			break;
 		case RS41_SFTYPE_XDATA:
 			break;
@@ -193,5 +227,24 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 		default:
 			break;
 	}
+}
+
+void
+RS41Decoder::updateCalibData(RS41Subframe_Status* status)
+{
+	size_t frag_offset;
+	int num_segments;
+	size_t i;
+
+	/* Copy the fragment and update the bitmap of the fragments left */
+	frag_offset = status->frag_seq * RS41_CALIB_FRAGSIZE;
+	memcpy((uint8_t*)&_calibData + frag_offset, status->frag_data, RS41_CALIB_FRAGSIZE);
+	_calibDataBitmap[status->frag_seq/8] &= ~(1 << status->frag_seq%8);
+
+	/* Check if we have all the sub-segments populated */
+	for (i=0; i<sizeof(_calibDataBitmap); i++) {
+		if (_calibDataBitmap[i]) return;
+	}
+	_calibrated = true;
 }
 /* }}} */

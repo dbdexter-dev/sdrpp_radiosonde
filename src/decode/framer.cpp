@@ -1,8 +1,6 @@
 #include <iostream>
 #include "framer.hpp"
-extern "C" {
 #include "utils.h"
-}
 
 #define CEILDIV(x, y) (((x)+((y)-1))/(y))
 
@@ -112,7 +110,7 @@ dsp::Framer::run()
 				/* Copy bits into a new frame */
 				bitcpy(_rawData, _rawData, _syncOffset, 8*_frameLen);
 				for (i=0; i<_frameLen; i++) {
-					out.writeBuf[outCount++] = _rawData[i];
+					out.writeBuf[outCount++] = inverted ? 0xFF ^_rawData[i] : _rawData[i];
 				}
 
 				/* If the offset is not byte-aligned, copy the last bits to the

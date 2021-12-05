@@ -26,6 +26,7 @@ private:
 	dsp::FloatFMDemod fmDemod;
 	dsp::GardnerResampler resampler;
 	dsp::Slicer slicer;
+	dsp::Framer framer;
 	RS41Decoder rs41Decoder;
 	dsp::HandlerSink<SondeData> sink;
 	SondeData lastData;

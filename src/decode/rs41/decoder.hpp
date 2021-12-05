@@ -1,4 +1,5 @@
 #pragma once
+
 #include <dsp/block.h>
 #include "decode/common.hpp"
 #include "decode/framer.hpp"
@@ -20,11 +21,15 @@ public:
 	dsp::stream<SondeData> out;
 
 private:
-	dsp::Framer _framer;
+	dsp::stream<uint8_t> *_in;
 	correct_reed_solomon *_rs;
+	RS41Calibration _calibData;
+	uint8_t _calibDataBitmap[sizeof(RS41Calibration)/8/RS41_CALIB_FRAGSIZE+1];
+	bool _calibrated;
 
 	void descramble(RS41Frame *frame);
 	bool rsCorrect(RS41Frame *frame);
 	bool crcCheck(RS41Subframe *subframe);
+	void updateCalibData(RS41Subframe_Status *status);
 	void updateSondeData(SondeData *info, RS41Subframe *subframe);
 };
