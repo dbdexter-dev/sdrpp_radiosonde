@@ -3,6 +3,7 @@
 
 class SondeData {
 public:
+	SondeData() { init(); }
 	void init() {
 		serial = "";
 		seq = time = burstkill = 0;

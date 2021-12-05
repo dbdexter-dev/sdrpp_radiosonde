@@ -46,6 +46,7 @@ RS41Decoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, voi
 	_in = in;
 	_ctx = ctx;
 	_handler = handler;
+	_calibrated = false;
 	_rs = correct_reed_solomon_create(RS41_REEDSOLOMON_POLY,
 	                                  RS41_REEDSOLOMON_FIRST_ROOT,
 	                                  RS41_REEDSOLOMON_ROOT_SKIP,
@@ -63,7 +64,12 @@ RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 {
 	generic_block<RS41Decoder>::tempStop();
 	generic_block<RS41Decoder>::unregisterInput(_in);
+
 	_in = in;
+	memset(_calibDataBitmap, 0xFF, sizeof(_calibDataBitmap));
+	_calibDataBitmap[sizeof(_calibDataBitmap)-1] &= ~(1 << (7 - RS41_CALIB_FRAGCOUNT%8)) - 1;
+	_calibrated = false;
+
 	generic_block<RS41Decoder>::registerInput(_in);
 	generic_block<RS41Decoder>::tempStart();
 }

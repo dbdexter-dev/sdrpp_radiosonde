@@ -15,7 +15,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 1, 0,
+    /* Version:         */ 0, 2, 0,
     /* Max instances    */ -1
 };
 
@@ -283,7 +283,7 @@ RadiosondeDecoderModule::onGPXOutputChanged(void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	if (_this->gpxOutput) {
-		_this->gpxWriter.init(_this->gpxFilename);
+		_this->gpxOutput = _this->gpxWriter.init(_this->gpxFilename);
 	} else {
 		_this->gpxWriter.deinit();
 	}

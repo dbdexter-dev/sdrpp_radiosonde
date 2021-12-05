@@ -5,7 +5,7 @@
 
 #define GPX_TIME_FORMAT "%Y-%m-%dT%H:%M:%SZ"
 
-void
+bool
 GPXWriter::init(const char *fname)
 {
 	if (_fd) {
@@ -14,7 +14,7 @@ GPXWriter::init(const char *fname)
 	}
 
 	_fd = fopen(fname, "wb");
-	if (!_fd) return;
+	if (!_fd) return false;;
 
 	_trackActive = false;
 	fprintf(_fd,
@@ -23,6 +23,7 @@ GPXWriter::init(const char *fname)
 	);
 	_offset = ftell(_fd);
 	terminateFile();
+	return true;
 }
 
 void
@@ -92,11 +93,11 @@ void
 GPXWriter::terminateFile()
 {
 	unsigned long offset = _offset;
+	if (!_fd) return;
+
 	fseek(_fd, _offset, SEEK_SET);
 
-	if (_trackActive) {
-		stopTrackInternal();
-	}
+	if (_trackActive) stopTrackInternal();
 
 	fprintf(_fd, "</gpx>\n");
 	fflush(_fd);

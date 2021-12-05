@@ -8,7 +8,7 @@ public:
 	GPXWriter() { _fd = NULL; };
 	~GPXWriter();
 
-	void init(const char *fname);
+	bool init(const char *fname);
 	void deinit();
 	void startTrack(const char *name);
 	void stopTrack();
