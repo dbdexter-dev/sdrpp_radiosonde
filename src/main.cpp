@@ -35,6 +35,14 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 
 	lastData.lat = lastData.lon = lastData.alt = 0;
 
+	fmDemod.start();
+	resampler.start();
+	slicer.start();
+	framer.start();
+	rs41Decoder.start();
+	sink.start();
+	enabled = true;
+
 	gui::menu.registerEntry(name, menuHandler, this, this);
 }
 
