@@ -7,6 +7,7 @@
 #include "demod/gardner.hpp"
 #include "demod/slicer.hpp"
 #include "gpx.hpp"
+#include "ptu.hpp"
 
 class RadiosondeDecoderModule : public ModuleManager::Instance {
 public:
@@ -22,8 +23,9 @@ public:
 private:
 	std::string name;
 	bool enabled = true;
-	bool gpxOutput = false;
+	bool gpxOutput = false, ptuOutput = false;
 	char gpxFilename[2048];
+	char ptuFilename[2048];
 	static const char *supportedTypes[1];
 	int selectedType;
 
@@ -36,9 +38,11 @@ private:
 	RS41Decoder rs41Decoder;
 	SondeData lastData;
 	GPXWriter gpxWriter;
+	PTUWriter ptuWriter;
 
 	static void menuHandler(void *ctx);
 	static void sondeDataHandler(SondeData *data, void *ctx);
 	static void onTypeSelected(void *ctx, int selection);
 	static void onGPXOutputChanged(void *ctx);
+	static void onPTUOutputChanged(void *ctx);
 };

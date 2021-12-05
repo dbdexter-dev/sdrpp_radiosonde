@@ -8,10 +8,7 @@
 bool
 GPXWriter::init(const char *fname)
 {
-	if (_fd) {
-		terminateFile();
-		fclose(_fd);
-	}
+	if (_fd) deinit();
 
 	_fd = fopen(fname, "wb");
 	if (!_fd) return false;;
@@ -29,15 +26,10 @@ GPXWriter::init(const char *fname)
 void
 GPXWriter::deinit()
 {
+	if (!_fd) return;
 	terminateFile();
 	fclose(_fd);
 	_fd = NULL;
-}
-
-
-GPXWriter::~GPXWriter()
-{
-	deinit();
 }
 
 void

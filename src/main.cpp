@@ -43,6 +43,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	framer.start();
 	enabled = true;
 	gpxFilename[0] = 0;
+	ptuFilename[0] = 0;
 	this->gpxOutput = false;
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
@@ -108,7 +109,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	const float width = ImGui::GetContentRegionAvailWidth();
 	char time[64];
-	bool gpxStatusChanged;
+	bool gpxStatusChanged, ptuStatusChanged, gpxStatus, ptuStatus;
 
 	if (!_this->enabled) style::beginDisabled();
 
@@ -259,10 +260,19 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	/* }}} */
 	/* GPX output file {{{ */
 	gpxStatusChanged = ImGui::Checkbox("GPX track", &_this->gpxOutput);
+	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
 	ImGui::InputText("##_gpx_fname", _this->gpxFilename, sizeof(gpxFilename)-1,
 			_this->gpxOutput ? ImGuiInputTextFlags_ReadOnly : 0);
 	if (gpxStatusChanged) onGPXOutputChanged(ctx);
+	/* }}} */
+	/* PTU output file {{{ */
+	ptuStatusChanged = ImGui::Checkbox("PTU data", &_this->ptuOutput);
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+	ImGui::InputText("##_ptu_fname", _this->ptuFilename, sizeof(ptuFilename)-1,
+			_this->ptuOutput ? ImGuiInputTextFlags_ReadOnly : 0);
+	if (ptuStatusChanged) onPTUOutputChanged(ctx);
 	/* }}} */
 
 	if (!_this->enabled) style::endDisabled();
@@ -276,6 +286,8 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 
 	_this->gpxWriter.startTrack(data->serial.c_str());
 	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt);
+	_this->ptuWriter.addPoint(data->time, data->temp, data->rh, data->dewpt, data->pressure, 
+			data->alt, data->spd, data->hdg);
 }
 
 void
@@ -286,6 +298,17 @@ RadiosondeDecoderModule::onGPXOutputChanged(void *ctx)
 		_this->gpxOutput = _this->gpxWriter.init(_this->gpxFilename);
 	} else {
 		_this->gpxWriter.deinit();
+	}
+}
+
+void
+RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
+{
+	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
+	if (_this->ptuOutput) {
+		_this->ptuOutput = _this->ptuWriter.init(_this->ptuFilename);
+	} else {
+		_this->ptuWriter.deinit();
 	}
 }
 

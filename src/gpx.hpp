@@ -6,7 +6,7 @@
 class GPXWriter {
 public:
 	GPXWriter() { _fd = NULL; };
-	~GPXWriter();
+	~GPXWriter() { deinit(); };
 
 	bool init(const char *fname);
 	void deinit();
