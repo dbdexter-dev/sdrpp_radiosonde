@@ -21,6 +21,9 @@ public:
 private:
 	std::string name;
 	bool enabled = true;
+	static const char *supportedTypes[1];
+	int selectedType;
+
 	float symrate, bw;
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
@@ -32,4 +35,5 @@ private:
 
 	static void menuHandler(void *ctx);
 	static void sondeDataHandler(SondeData *data, void *ctx);
+	static void onTypeSelected(void *ctx, int selection);
 };

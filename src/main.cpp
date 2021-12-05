@@ -20,11 +20,14 @@ SDRPP_MOD_INFO {
     /* Max instances    */ -1
 };
 
+const char *RadiosondeDecoderModule::supportedTypes[1] = { "RS41" };
+
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
 	this->name = name;
 	bw = DEFAULT_BANDWIDTH;
 	symrate = SYMRATE/bw;
+	selectedType = -1;
 
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
@@ -34,13 +37,11 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	framer.init(&slicer.out, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN);
 	rs41Decoder.init(&framer.out, sondeDataHandler, this);
 
-	lastData.lat = lastData.lon = lastData.alt = 0;
-
+	onTypeSelected(this, 0);    /* TODO load from config? */
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
 	framer.start();
-	rs41Decoder.start();
 	enabled = true;
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
@@ -61,13 +62,12 @@ RadiosondeDecoderModule::enable() {
 	resampler.setInput(&fmDemod.out);
 	slicer.setInput(&resampler.out);
 	framer.setInput(&slicer.out);
-	rs41Decoder.setInput(&framer.out);
 
+	onTypeSelected(this, selectedType);
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
 	framer.start();
-	rs41Decoder.start();
 	enabled = true;
 }
 
@@ -78,6 +78,13 @@ RadiosondeDecoderModule::disable() {
 	slicer.stop();
 	resampler.stop();
 	fmDemod.stop();
+	switch (selectedType) {
+		case 0: /* RS41 */
+			rs41Decoder.stop();
+			break;
+		default:
+			break;
+	}
 	sigpath::vfoManager.deleteVFO(vfo);
 	enabled = false;
 }
@@ -96,12 +103,30 @@ void
 RadiosondeDecoderModule::menuHandler(void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
-
-	float width = ImGui::GetContentRegionAvailWidth();
+	const float width = ImGui::GetContentRegionAvailWidth();
 
 	if (!_this->enabled) style::beginDisabled();
 
+	/* Type selection */
+	ImGui::LeftLabel("Type");
+	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+	if (ImGui::BeginCombo("##_radiosonde_type_", supportedTypes[_this->selectedType])) {
+		for (int i=0; i<IM_ARRAYSIZE(supportedTypes); i++) {
+			const char *curItem = supportedTypes[i];
+			bool selected = _this->selectedType == i;
 
+			if (ImGui::Selectable(curItem, selected)) {
+				onTypeSelected(ctx, i);
+			}
+			if (selected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+
+
+	/* Sonde data display {{{ */
 	ImGui::SetNextItemWidth(width);
 	if (ImGui::BeginTable("split", 2)) {
 		ImGui::TableNextColumn();
@@ -217,6 +242,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 
 		ImGui::EndTable();
 	}
+	/* }}} */
 
 	if (!_this->enabled) style::endDisabled();
 }
@@ -226,6 +252,31 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	_this->lastData = *data;
+}
+
+void
+RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
+{
+	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
+
+	switch (_this->selectedType) {
+		case 0: /* RS41 */
+			_this->rs41Decoder.stop();
+			break;
+		default:
+			break;
+	}
+
+	switch (selection) {
+		case 0: /* RS41 */
+			_this->rs41Decoder.setInput(&_this->framer.out);
+			_this->rs41Decoder.start();
+			break;
+		default:
+			break;
+	}
+
+	_this->selectedType = selection;
 }
 /* }}} */
 
