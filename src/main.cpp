@@ -282,16 +282,16 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	gpxStatusChanged = ImGui::Checkbox("GPX track", &_this->gpxOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
-	ImGui::InputText("##_gpx_fname", _this->gpxFilename, sizeof(gpxFilename)-1,
-			_this->gpxOutput ? ImGuiInputTextFlags_ReadOnly : 0);
+	gpxStatusChanged |= ImGui::InputText("##_gpx_fname", _this->gpxFilename, sizeof(gpxFilename)-1,
+	                                     ImGuiInputTextFlags_EnterReturnsTrue);
 	if (gpxStatusChanged) onGPXOutputChanged(ctx);
 	/* }}} */
 	/* PTU output file {{{ */
 	ptuStatusChanged = ImGui::Checkbox("PTU data", &_this->ptuOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
-	ImGui::InputText("##_ptu_fname", _this->ptuFilename, sizeof(ptuFilename)-1,
-			_this->ptuOutput ? ImGuiInputTextFlags_ReadOnly : 0);
+	ptuStatusChanged |= ImGui::InputText("##_ptu_fname", _this->ptuFilename, sizeof(ptuFilename)-1,
+	                                     ImGuiInputTextFlags_EnterReturnsTrue);
 	if (ptuStatusChanged) onPTUOutputChanged(ctx);
 	/* }}} */
 
