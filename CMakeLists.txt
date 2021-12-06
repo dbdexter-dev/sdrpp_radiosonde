@@ -13,7 +13,7 @@ if (MSVC)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(radiosonde_decoder PRIVATE -O3 -std=c++17 -Wno-unused-command-line-argument -undefined dynamic_lookup)
 else ()
-	target_compile_options(radiosonde_decoder PRIVATE -O3 -std=c++17)
+	target_compile_options(radiosonde_decoder PRIVATE -O3 -g -std=c++17)
 endif ()
 
 # Install directives

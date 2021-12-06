@@ -3,6 +3,8 @@
 #include <module.h>
 #include <dsp/demodulator.h>
 #include "decode/common.hpp"
+#include "decode/framer.hpp"
+#include "decode/null/decoder.hpp"
 #include "decode/rs41/decoder.hpp"
 #include "demod/gardner.hpp"
 #include "demod/slicer.hpp"
@@ -26,16 +28,20 @@ private:
 	bool gpxOutput = false, ptuOutput = false;
 	char gpxFilename[2048];
 	char ptuFilename[2048];
-	static const char *supportedTypes[1];
 	int selectedType;
+	const std::tuple<const char*, float, float> supportedTypes[2] = {
+		std::tuple<const char*, float, float>("RS41", 4800.0, 1e4),
+		std::tuple<const char*, float, float>("(null)", 2400.0, 5e3),
+	};
 
-	float symrate, bw;
+	float symRate, bw;
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
 	dsp::GardnerResampler resampler;
 	dsp::Slicer slicer;
 	dsp::Framer framer;
 	RS41Decoder rs41Decoder;
+	NullDecoder nullDecoder;
 	SondeData lastData;
 	GPXWriter gpxWriter;
 	PTUWriter ptuWriter;

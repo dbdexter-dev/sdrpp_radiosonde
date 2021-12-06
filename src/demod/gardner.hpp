@@ -12,6 +12,7 @@ namespace dsp {
 
 		void init(stream<float> *in, float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq = 0.125);
 		void setInput(stream<float> *in);
+		void setLoopParams(float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq = 0.125);
 
 		int run() override;
 

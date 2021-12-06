@@ -8,9 +8,8 @@
 #include <options.h>
 #include "main.hpp"
 
-#define SYMRATE 4800.0
-#define DEFAULT_BANDWIDTH 10000
 #define SNAP_INTERVAL 5000
+#define GARDNER_DAMP 0.707
 
 SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
@@ -22,7 +21,6 @@ SDRPP_MOD_INFO {
 
 ConfigManager config;
 
-const char *RadiosondeDecoderModule::supportedTypes[1] = { "RS41" };
 
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
@@ -31,8 +29,6 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	std::string gpxPath, ptuPath;
 
 	this->name = name;
-	bw = DEFAULT_BANDWIDTH;
-	symrate = SYMRATE/bw;
 	selectedType = -1;
 
 	config.acquire();
@@ -47,24 +43,28 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	typeToSelect = config.conf[name]["sondeType"];
 	config.release(created);
 
+	symRate = std::get<1>(supportedTypes[typeToSelect]);
+	bw = std::get<2>(supportedTypes[typeToSelect]);
+
 	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
 	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
 
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
 	fmDemod.init(vfo->output, bw, bw/2.0f);
-	resampler.init(&fmDemod.out, symrate, 0.707, symrate/250, symrate/1e4);
+	resampler.init(&fmDemod.out, symRate, GARDNER_DAMP, symRate/250, symRate/1e4);
 	slicer.init(&resampler.out);
 	framer.init(&slicer.out, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN);
-	rs41Decoder.init(&framer.out, sondeDataHandler, this);
 
-	onTypeSelected(this, typeToSelect);
+	rs41Decoder.init(&framer.out, sondeDataHandler, this);
+	nullDecoder.init(&framer.out, sondeDataHandler, this);
+
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
 	framer.start();
+	onTypeSelected(this, typeToSelect);
 	enabled = true;
-	this->gpxOutput = false;
 
 	gui::menu.registerEntry(name, menuHandler, this, this);
 }
@@ -72,20 +72,18 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 RadiosondeDecoderModule::~RadiosondeDecoderModule()
 {
 	if (isEnabled()) disable();
-	sigpath::vfoManager.deleteVFO(vfo);
+	if (vfo) {
+		sigpath::vfoManager.deleteVFO(vfo);
+		vfo = NULL;
+	}
 	gui::menu.removeEntry(name);
 }
 
 void
 RadiosondeDecoderModule::enable() {
-	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
-	vfo->setSnapInterval(SNAP_INTERVAL);
-	fmDemod.setInput(vfo->output);
-	resampler.setInput(&fmDemod.out);
-	slicer.setInput(&resampler.out);
-	framer.setInput(&slicer.out);
-
+	/* Make a new VFO, wire it into the DSP path, then start the appropriate decoder */
 	onTypeSelected(this, selectedType);
+
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
@@ -95,19 +93,17 @@ RadiosondeDecoderModule::enable() {
 
 void
 RadiosondeDecoderModule::disable() {
+	nullDecoder.stop();
 	rs41Decoder.stop();
+
 	framer.stop();
 	slicer.stop();
 	resampler.stop();
 	fmDemod.stop();
-	switch (selectedType) {
-		case 0: /* RS41 */
-			rs41Decoder.stop();
-			break;
-		default:
-			break;
-	}
-	sigpath::vfoManager.deleteVFO(vfo);
+
+	if (vfo) sigpath::vfoManager.deleteVFO(vfo);
+	vfo = NULL;
+
 	gpxWriter.stopTrack();
 	lastData.init();
 	enabled = false;
@@ -136,9 +132,9 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	/* Type combobox {{{ */
 	ImGui::LeftLabel("Type");
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
-	if (ImGui::BeginCombo("##_radiosonde_type_", supportedTypes[_this->selectedType])) {
-		for (int i=0; i<IM_ARRAYSIZE(supportedTypes); i++) {
-			const char *curItem = supportedTypes[i];
+	if (ImGui::BeginCombo("##_radiosonde_type_", std::get<0>(_this->supportedTypes[_this->selectedType]))) {
+		for (int i=0; i<IM_ARRAYSIZE(_this->supportedTypes); i++) {
+			const char *curItem = std::get<0>(_this->supportedTypes[i]);
 			bool selected = _this->selectedType == i;
 
 			if (ImGui::Selectable(curItem, selected)) {
@@ -286,8 +282,8 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	                                     ImGuiInputTextFlags_EnterReturnsTrue);
 	if (gpxStatusChanged) onGPXOutputChanged(ctx);
 	/* }}} */
-	/* PTU output file {{{ */
-	ptuStatusChanged = ImGui::Checkbox("PTU data", &_this->ptuOutput);
+	/* Log output file {{{ */
+	ptuStatusChanged = ImGui::Checkbox("Log data", &_this->ptuOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
 	ptuStatusChanged |= ImGui::InputText("##_ptu_fname", _this->ptuFilename, sizeof(ptuFilename)-1,
@@ -306,8 +302,10 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 
 	_this->gpxWriter.startTrack(data->serial.c_str());
 	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt);
-	_this->ptuWriter.addPoint(data->time, data->temp, data->rh, data->dewpt, data->pressure,
-			data->alt, data->spd, data->hdg);
+	_this->ptuWriter.addPoint(data->time,
+	                          data->temp, data->rh, data->dewpt, data->pressure,
+	                          data->lat, data->lon, data->alt,
+	                          data->spd, data->hdg, data->climb);
 }
 
 void
@@ -346,6 +344,7 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 void
 RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 {
+	float symRate, bw;
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 
 	switch (_this->selectedType) {
@@ -353,8 +352,25 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 			_this->rs41Decoder.stop();
 			break;
 		default:
+			_this->nullDecoder.stop();
 			break;
 	}
+
+	symRate = std::get<1>(_this->supportedTypes[selection]);
+	bw = std::get<2>(_this->supportedTypes[selection]);
+	_this->bw = bw;
+	_this->symRate = symRate/bw;
+
+	/* Update VFO */
+	_this->fmDemod.stop();
+	if (_this->vfo) sigpath::vfoManager.deleteVFO(_this->vfo);
+	_this->vfo = sigpath::vfoManager.createVFO(_this->name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
+	_this->fmDemod.setInput(_this->vfo->output);
+	_this->fmDemod.start();
+
+	/* Update resampler parameters */
+	_this->resampler.setLoopParams(_this->symRate, GARDNER_DAMP, _this->symRate/250, _this->symRate/1e4);
+
 
 	switch (selection) {
 		case 0: /* RS41 */
@@ -362,6 +378,8 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 			_this->rs41Decoder.start();
 			break;
 		default:
+			_this->nullDecoder.setInput(&_this->framer.out);
+			_this->nullDecoder.start();
 			break;
 	}
 

@@ -31,10 +31,10 @@ dsp::GardnerResampler::init(stream<float> *in, float symFreq, float damp, float 
 	_avgMagnitude = TARGET_MAG;
 	_avgDC = 0;
 	_state = 1;
+	update_alpha_beta(damp, bw);
 
 	_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2.0*symFreq, numPhases), numPhases);
 
-	update_alpha_beta(damp, bw);
 
 	generic_block<GardnerResampler>::registerInput(_in);
 	generic_block<GardnerResampler>::registerOutput(&out);
@@ -49,6 +49,18 @@ dsp::GardnerResampler::setInput(stream<float>* in)
 	_in = in;
 	generic_block<GardnerResampler>::registerInput(_in);
 	generic_block<GardnerResampler>::tempStart();
+}
+
+void
+dsp::GardnerResampler::setLoopParams(float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq)
+{
+	int numPhases = ceil(symFreq / targetSymFreq);  /* Oversample to get > 1/targetSymFreq samples per symbol */
+
+	_freq = _centerFreq = 2.0 * symFreq / numPhases;
+	_maxFreqDelta = maxFreqDelta / numPhases;
+	update_alpha_beta(damp, bw);
+
+	_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2.0*symFreq, numPhases), numPhases);
 }
 
 int
