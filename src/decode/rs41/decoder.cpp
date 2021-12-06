@@ -135,6 +135,7 @@ RS41Decoder::run()
 {
 	RS41Frame *frame;
 	RS41Subframe *subframe;
+	float oldPressure;
 	int offset, outCount, numFrames, bytesLeft;
 
 	assert(generic_block<RS41Decoder>::_block_init);
@@ -145,6 +146,7 @@ RS41Decoder::run()
 
 	/* For each frame that was received */
 	for (int i=0; i<numFrames; i++) {
+		oldPressure = _sondeData.pressure;
 		_sondeData.pressure = -1;
 		frame = (RS41Frame*)(_in->readBuf + i*sizeof(*frame));
 
@@ -168,6 +170,7 @@ RS41Decoder::run()
 			updateSondeData(&_sondeData, subframe);
 		}
 
+		if (_sondeData.pressure < 0) _sondeData.pressure = oldPressure;
 		_handler(&_sondeData, _ctx);
 		outCount++;
 	}
