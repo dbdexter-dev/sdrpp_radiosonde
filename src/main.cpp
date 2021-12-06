@@ -8,6 +8,8 @@
 #include <options.h>
 #include "main.hpp"
 
+#define CONCAT(a, b)    ((std::string(a) + b).c_str())
+
 #define SNAP_INTERVAL 5000
 #define GARDNER_DAMP 0.707
 #define UNCAL_COLOR IM_COL32(255,255,0,255)
@@ -16,7 +18,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 3, 1,
+    /* Version:         */ 0, 3, 2,
     /* Max instances    */ -1
 };
 
@@ -133,7 +135,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	/* Type combobox {{{ */
 	ImGui::LeftLabel("Type");
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
-	if (ImGui::BeginCombo("##_radiosonde_type_", std::get<0>(_this->supportedTypes[_this->selectedType]))) {
+	if (ImGui::BeginCombo(CONCAT("##_radiosonde_type_", _this->name), std::get<0>(_this->supportedTypes[_this->selectedType]))) {
 		for (int i=0; i<IM_ARRAYSIZE(_this->supportedTypes); i++) {
 			const char *curItem = std::get<0>(_this->supportedTypes[i]);
 			bool selected = _this->selectedType == i;
@@ -150,7 +152,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	/* }}} */
 	/* Sonde data display {{{ */
 	ImGui::SetNextItemWidth(width);
-	if (ImGui::BeginTable("split", 2, ImGuiTableFlags_SizingFixedFit)) {
+	if (ImGui::BeginTable(CONCAT("##radiosonde_data_", _this->name), 2, ImGuiTableFlags_SizingFixedFit)) {
 		ImGui::TableNextColumn();
 		ImGui::Text("Serial no.");
 		if (_this->enabled) {
@@ -279,7 +281,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	gpxStatusChanged = ImGui::Checkbox("GPX track", &_this->gpxOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
-	gpxStatusChanged |= ImGui::InputText("##_gpx_fname", _this->gpxFilename, sizeof(gpxFilename)-1,
+	gpxStatusChanged |= ImGui::InputText(CONCAT("##_gpx_fname_", _this->name), _this->gpxFilename, sizeof(gpxFilename)-1,
 	                                     ImGuiInputTextFlags_EnterReturnsTrue);
 	if (gpxStatusChanged) onGPXOutputChanged(ctx);
 	/* }}} */
@@ -287,7 +289,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	ptuStatusChanged = ImGui::Checkbox("Log data", &_this->ptuOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
-	ptuStatusChanged |= ImGui::InputText("##_ptu_fname", _this->ptuFilename, sizeof(ptuFilename)-1,
+	ptuStatusChanged |= ImGui::InputText(CONCAT("##_ptu_fname_", _this->name), _this->ptuFilename, sizeof(ptuFilename)-1,
 	                                     ImGuiInputTextFlags_EnterReturnsTrue);
 	if (ptuStatusChanged) onPTUOutputChanged(ctx);
 	/* }}} */
