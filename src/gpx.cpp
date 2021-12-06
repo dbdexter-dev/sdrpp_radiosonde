@@ -65,11 +65,12 @@ GPXWriter::stopTrack()
 void
 GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt)
 {
-	if (!_fd) return;
+	if (!_fd || !_trackActive) return;
 	fseek(_fd, _offset, SEEK_SET);
 	char timestr[sizeof("YYYY-MM-DDThh:mm:ssZ")+1];
 
 	if (isnan(lat) || isnan(lon) || isnan(alt)) return;
+	if (lat == 0 && lon == 0 && alt == 0) return;       /* -ffast-math breaks NaN */
 
 	strftime(timestr, sizeof(timestr), GPX_TIME_FORMAT, gmtime(&time));
 	fprintf(_fd, "<trkpt lat=\"%f\" lon=\"%f\">\n", lat, lon);

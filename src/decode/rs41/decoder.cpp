@@ -236,6 +236,7 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			info->time = gps_time_to_utc(gpsinfo->week, gpsinfo->ms);
 			break;
 		case RS41_SFTYPE_XDATA:
+			/* TODO */
 			break;
 		case RS41_SFTYPE_GPSRAW:
 		case RS41_SFTYPE_EMPTY:

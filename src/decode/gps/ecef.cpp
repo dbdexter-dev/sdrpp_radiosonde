@@ -37,7 +37,7 @@ ecef_to_spd_hdg(float *speed, float *heading, float *v_climb, float lat, float l
 
 	if (dx == 0 && dy == 0 && dz == 0) {
 		*speed = *heading = *v_climb = 0;
-		return 0;
+		return 1;
 	}
 
 	*v_climb = dx*cosf(lat)*cosf(lon) + dy*cosf(lat)*sinf(lon) + dz*sinf(lat);

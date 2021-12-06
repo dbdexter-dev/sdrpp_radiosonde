@@ -2,7 +2,6 @@
 
 #include <dsp/block.h>
 #include "decode/common.hpp"
-#include "decode/framer.hpp"
 extern "C" {
 #include <correct.h>
 }
