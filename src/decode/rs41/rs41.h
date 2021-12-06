@@ -38,7 +38,7 @@
 #define RS41_SFTYPE_XDATA 0x7E          /* Extended data */
 
 #define RS41_CALIB_FRAGSIZE 16          /* Size of each calibration fragment inside an info subframe */
-#define RS41_CALIB_FRAGCOUNT 50
+#define RS41_CALIB_FRAGCOUNT 51
 
 #define RS41_SERIAL_LEN 8               /* Length of the serial number, bytes */
 
@@ -163,6 +163,6 @@ typedef struct {
 	uint8_t _pad6[6];
 	uint8_t _unk_dynamic0[4];   /* Unknown, counter-like */
 	uint8_t _unk_dynamic1[2];   /* Unknown, last byte probably flags */
-
+	uint8_t _unk_end[2];
 
 } __attribute__((packed)) RS41Calibration;

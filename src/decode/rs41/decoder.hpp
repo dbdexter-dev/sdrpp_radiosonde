@@ -23,6 +23,7 @@ private:
 	dsp::stream<uint8_t> *_in;
 	correct_reed_solomon *_rs;
 	RS41Calibration _calibData;
+	SondeData _sondeData;
 	uint8_t _calibDataBitmap[sizeof(RS41Calibration)/8/RS41_CALIB_FRAGSIZE+1];
 	bool _calibrated;
 
