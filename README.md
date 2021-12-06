@@ -1,6 +1,7 @@
 Radiosonde decoder plugin for SDR++
 ===================================
 
+![radiosondeGPX](https://user-images.githubusercontent.com/17110004/144872708-2a578c62-5493-4845-9098-9328c4e914bf.png)
 
 Build instructions
 ------------------

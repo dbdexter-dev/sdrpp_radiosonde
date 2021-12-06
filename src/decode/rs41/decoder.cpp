@@ -122,6 +122,7 @@ RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 	generic_block<RS41Decoder>::unregisterInput(_in);
 
 	_in = in;
+	_sondeData.init();
 	memset(_calibDataBitmap, 0xFF, sizeof(_calibDataBitmap));
 	_calibDataBitmap[sizeof(_calibDataBitmap)-1] &= ~((1 << (7 - (RS41_CALIB_FRAGCOUNT-1)%8)) - 1);
 	_calibrated = false;
