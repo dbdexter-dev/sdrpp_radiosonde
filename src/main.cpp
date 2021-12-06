@@ -16,7 +16,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 3, 0,
+    /* Version:         */ 0, 3, 1,
     /* Max instances    */ -1
 };
 
