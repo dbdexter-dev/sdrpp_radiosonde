@@ -29,9 +29,8 @@ private:
 	char gpxFilename[2048];
 	char ptuFilename[2048];
 	int selectedType;
-	const std::tuple<const char*, float, float> supportedTypes[2] = {
+	const std::tuple<const char*, float, float> supportedTypes[1] = {
 		std::tuple<const char*, float, float>("RS41", 4800.0, 1e4),
-		std::tuple<const char*, float, float>("(null)", 2400.0, 5e3),
 	};
 
 	float symRate, bw;
