@@ -10,6 +10,7 @@
 
 #define SNAP_INTERVAL 5000
 #define GARDNER_DAMP 0.707
+#define UNCAL_COLOR IM_COL32(255,255,0,255)
 
 SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
@@ -236,7 +237,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Temperature");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1f°C", _this->lastData.temp);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 		}
@@ -246,7 +247,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Humidity");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1f%%", _this->lastData.rh);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 		}
@@ -256,7 +257,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Dew point");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1f°C", _this->lastData.dewpt);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 		}
@@ -266,7 +267,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Pressure");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1fhPa", _this->lastData.pressure);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 		}
@@ -300,7 +301,9 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	_this->lastData = *data;
 
-	_this->gpxWriter.startTrack(data->serial.c_str());
+	if (data->serial != "") {
+		_this->gpxWriter.startTrack(data->serial.c_str());
+	}
 	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt);
 	_this->ptuWriter.addPoint(data->time,
 	                          data->temp, data->rh, data->dewpt, data->pressure,
