@@ -108,6 +108,7 @@ RS41Decoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, voi
 	                                  RS41_REEDSOLOMON_FIRST_ROOT,
 	                                  RS41_REEDSOLOMON_ROOT_SKIP,
 	                                  RS41_REEDSOLOMON_T);
+	m_sondeData.init();
 	memcpy(&m_calibData, _defaultCalibData, sizeof(_defaultCalibData));
 	memset(m_calibDataBitmap, 0xFF, sizeof(m_calibDataBitmap));
 	m_calibDataBitmap[sizeof(m_calibDataBitmap)-1] &= ~((1 << (7 - (RS41_CALIB_FRAGCOUNT-1)%8)) - 1);
@@ -156,6 +157,8 @@ RS41Decoder::run()
 		if (m_rs) rsCorrect(frame);
 
 		bytesLeft = RS41_DATA_LEN + (frame->extended_flag == RS41_FLAG_EXTENDED ? RS41_XDATA_LEN : 0);
+		if (frame->extended_flag != RS41_FLAG_EXTENDED) m_sondeData->auxData = "";
+
 		offset = 0;
 		while (offset < bytesLeft) {
 			subframe = (RS41Subframe*)&frame->data[offset];
