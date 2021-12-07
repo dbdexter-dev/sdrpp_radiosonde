@@ -281,6 +281,14 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 		}
 
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::Text("Aux. data");
+		if (_this->enabled) {
+			ImGui::TableNextColumn();
+			ImGui::Text(_this->lastData.auxData.c_str());
+		}
+
 		ImGui::EndTable();
 	}
 	/* }}} */

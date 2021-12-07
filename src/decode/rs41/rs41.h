@@ -135,6 +135,13 @@ typedef struct {
 	uint16_t satellite[12];
 } __attribute__((packed)) RS41Subframe_GPSInfo;
 
+typedef struct {
+	uint8_t type;
+	uint8_t len;
+	uint8_t unk;
+	char ascii_data[RS41_XDATA_LEN];
+} __attribute__((packed)) RS41Subframe_XDATA;
+
 /* }}} */
 /* Credits to @einergehtnochrein (https://github.com/einergehtnochrein/ra-firmware)
  * for figuring out what each calibration field does */

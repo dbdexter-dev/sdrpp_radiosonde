@@ -11,6 +11,7 @@ public:
 		spd = hdg = climb = 0;
 		temp = rh = dewpt = pressure = 0;
 		calibrated = false;
+		auxData = "";
 	};
 
 	std::string serial;         /* Serial number */
@@ -22,4 +23,5 @@ public:
 	float temp, rh;             /* Temperature (degrees C), relative humidity (%) */
 	float dewpt, pressure;      /* Dew point (degrees C), pressure (hPa) */
 	bool calibrated;            /* Whether all the calibration data has been received */
+	std::string auxData;        /* Auxiliary freeform data */
 };

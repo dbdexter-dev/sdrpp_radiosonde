@@ -2,6 +2,7 @@
 #include "decoder.hpp"
 #include "decode/gps/ecef.h"
 #include "decode/gps/time.h"
+#include "decode/xdata.hpp"
 #include "rs41.h"
 #include "utils.h"
 
@@ -148,8 +149,6 @@ RS41Decoder::run()
 
 	/* For each frame that was received */
 	for (int i=0; i<numFrames; i++) {
-		oldPressure = m_sondeData.pressure;
-		m_sondeData.pressure = -1;
 		frame = (RS41Frame*)(m_in->readBuf + i*sizeof(*frame));
 
 		/* Descramble and error correct */
@@ -172,7 +171,6 @@ RS41Decoder::run()
 			updateSondeData(&m_sondeData, subframe);
 		}
 
-		if (m_sondeData.pressure < 0) m_sondeData.pressure = oldPressure;
 		m_handler(&m_sondeData, m_ctx);
 		outCount++;
 	}
@@ -254,8 +252,11 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 	RS41Subframe_PTU *ptu;
 	RS41Subframe_GPSInfo *gpsinfo;
 	RS41Subframe_GPSPos *gpspos;
+	RS41Subframe_XDATA *xdata;
 
+	int i;
 	float x, y, z, dx, dy, dz;
+	bool hasPressureSensor = false;
 
 	switch (subframe->type) {
 		case RS41_SFTYPE_INFO:
@@ -273,7 +274,10 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 
 			info->temp = temp(ptu);
 			info->rh = rh(ptu);
-			if (pressure(ptu) > 0) info->pressure = pressure(ptu);  /* Pressure sensor is optional */
+			if (pressure(ptu) > 0) {
+				hasPressureSensor = true;
+				info->pressure = pressure(ptu);  /* Pressure sensor is optional */
+			}
 			info->dewpt = dewpt(info->temp, info->rh);
 			break;
 		case RS41_SFTYPE_GPSPOS:
@@ -288,7 +292,7 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			ecef_to_lla(&info->lat, &info->lon, &info->alt, x, y, z);
 			ecef_to_spd_hdg(&info->spd, &info->hdg, &info->climb, info->lat, info->lon, dx, dy, dz);
 
-			if (info->pressure < 0) info->pressure = altitude_to_pressure(info->alt);
+			if (!hasPressureSensor) info->pressure = altitude_to_pressure(info->alt);
 
 			break;
 		case RS41_SFTYPE_GPSINFO:
@@ -296,7 +300,8 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			info->time = gps_time_to_utc(gpsinfo->week, gpsinfo->ms);
 			break;
 		case RS41_SFTYPE_XDATA:
-			/* TODO */
+			xdata = (RS41Subframe_XDATA*)subframe;
+			info->auxData = decodeXDATA(info, xdata->ascii_data, xdata->len);
 			break;
 		case RS41_SFTYPE_GPSRAW:
 		case RS41_SFTYPE_EMPTY:

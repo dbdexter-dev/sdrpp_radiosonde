@@ -145,7 +145,7 @@ dsp::Framer::run()
 
 				/* If the offset is not byte-aligned, copy the last bits to the
 				 * beginning of the new frame */
-				bitcpy(m_rawData, m_rawData, m_syncOffset, 8);
+				bitcpy(m_rawData, m_rawData, m_syncOffset + 8*m_frameLen, 8);
 				m_dataOffset = m_syncOffset%8;
 				m_state = READ;
 				break;
