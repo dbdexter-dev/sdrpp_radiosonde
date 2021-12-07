@@ -2,7 +2,10 @@
 #include <sstream>
 #include "xdata.hpp"
 
-#define FLOWRATE 30
+#define FLOWRATE 30     /* Time taken for the pump to force 100mL of air through the sensor, in seconds */
+
+/* https://www.en-sci.com/wp-content/uploads/2020/02/Ozonesonde-Flight-Preparation-Manual.pdf */
+/* https://www.vaisala.com/sites/default/files/documents/Ozone%20Sounding%20with%20Vaisala%20Radiosonde%20RS41%20User%27s%20Guide%20M211486EN-C.pdf */
 
 const static float _cfPressure[] = {3, 5, 7, 10, 15, 20, 30, 50, 70, 100, 150, 200};
 const static float _cfFactor[]   = {1.24, 1.124, 1.087, 1.066, 1.048, 1.041, 1.029, 1.018, 1.013, 1.007, 1.002, 1};
