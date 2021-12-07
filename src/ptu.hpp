@@ -8,7 +8,7 @@
  */
 class PTUWriter {
 public:
-	PTUWriter() { _fd = NULL; };
+	PTUWriter() { m_fd = NULL; };
 	~PTUWriter() { deinit(); };
 
 	bool init(const char *fname);
@@ -31,5 +31,5 @@ public:
 	 */
 	void addPoint(time_t utc, float temp, float rh, float dewpt, float pressure, float lat, float lon, float alt, float spd, float hdg, float climb);
 private:
-	FILE *_fd;
+	FILE *m_fd;
 };

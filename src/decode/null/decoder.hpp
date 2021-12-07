@@ -14,5 +14,5 @@ public:
 	int run() override;
 
 private:
-	dsp::stream<uint8_t> *_in;
+	dsp::stream<uint8_t> *m_in;
 };

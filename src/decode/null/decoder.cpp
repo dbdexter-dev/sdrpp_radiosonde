@@ -18,8 +18,8 @@ NullDecoder::~NullDecoder()
 void
 NullDecoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx)
 {
-	_in = in;
-	generic_block<NullDecoder>::registerInput(_in);
+	m_in = in;
+	generic_block<NullDecoder>::registerInput(m_in);
 	generic_block<NullDecoder>::_block_init = true;
 }
 
@@ -27,11 +27,11 @@ void
 NullDecoder::setInput(dsp::stream<uint8_t> *in)
 {
 	generic_block<NullDecoder>::tempStop();
-	generic_block<NullDecoder>::unregisterInput(_in);
+	generic_block<NullDecoder>::unregisterInput(m_in);
 
-	_in = in;
+	m_in = in;
 
-	generic_block<NullDecoder>::registerInput(_in);
+	generic_block<NullDecoder>::registerInput(m_in);
 	generic_block<NullDecoder>::tempStart();
 }
 
@@ -39,7 +39,7 @@ int
 NullDecoder::run()
 {
 	assert(generic_block<NullDecoder>::_block_init);
-	if (_in->read() < 0) return -1;
-	_in->flush();
+	if (m_in->read() < 0) return -1;
+	m_in->flush();
 	return 0;
 }

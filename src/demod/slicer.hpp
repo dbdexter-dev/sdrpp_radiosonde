@@ -8,7 +8,7 @@ namespace dsp {
 	public:
 		Slicer() {};
 		Slicer(stream<float> *in);
-		~Slicer() {};
+		~Slicer();
 
 		void init(stream<float> *in);
 		void setInput(stream<float> *in);
@@ -16,8 +16,8 @@ namespace dsp {
 
 		stream<uint8_t> out;
 	private:
-		uint8_t _tmp;
-		int _offset;
-		stream<float> *_in;
+		uint8_t m_tmp;
+		int m_offset;
+		stream<float> *m_in;
 	};
 };

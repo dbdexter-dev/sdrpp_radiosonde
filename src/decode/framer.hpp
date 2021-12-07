@@ -17,12 +17,12 @@ namespace dsp {
 
 		stream<uint8_t> out;
 	private:
-		stream<uint8_t> *_in;
-		uint64_t _syncWord;
-		int _syncLen, _frameLen;
-		uint8_t *_rawData;
-		int _dataOffset, _syncOffset;
-		enum { READ, DEOFFSET } _state;
+		stream<uint8_t> *m_in;
+		uint64_t m_syncWord;
+		int m_syncLen, m_frameLen;
+		uint8_t *m_rawData;
+		int m_dataOffset, m_syncOffset;
+		enum { READ, DEOFFSET } m_state;
 
 		int correlateU64(int *inverted, uint8_t *frame, int len);
 	};

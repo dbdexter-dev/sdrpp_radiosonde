@@ -10,7 +10,7 @@
 
 class GPXWriter {
 public:
-	GPXWriter() { _fd = NULL; };
+	GPXWriter() { m_fd = NULL; };
 	~GPXWriter() { deinit(); };
 
 	bool init(const char *fname);
@@ -44,10 +44,10 @@ public:
 private:
 	void terminateFile();
 	void stopTrackInternal();
-	FILE *_fd;
-	unsigned long _offset;
-	bool _trackActive;
+	FILE *m_fd;
+	unsigned long m_offset;
+	bool m_trackActive;
 	char sondeSerial[64];
 
-	float _lat, _lon, _alt;
+	float m_lat, m_lon, m_alt;
 };

@@ -77,7 +77,7 @@ static const uint8_t _defaultCalibData[sizeof(RS41Calibration)] = {
 
 RS41Decoder::RS41Decoder()
 {
-	_rs = correct_reed_solomon_create(RS41_REEDSOLOMON_POLY,
+	m_rs = correct_reed_solomon_create(RS41_REEDSOLOMON_POLY,
 	                                  RS41_REEDSOLOMON_FIRST_ROOT,
 	                                  RS41_REEDSOLOMON_ROOT_SKIP,
 	                                  RS41_REEDSOLOMON_T);
@@ -98,20 +98,20 @@ RS41Decoder::~RS41Decoder()
 void
 RS41Decoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx)
 {
-	_in = in;
-	_ctx = ctx;
-	_handler = handler;
-	_calibrated = false;
-	_rs = correct_reed_solomon_create(RS41_REEDSOLOMON_POLY,
+	m_in = in;
+	m_ctx = ctx;
+	m_handler = handler;
+	m_calibrated = false;
+	m_rs = correct_reed_solomon_create(RS41_REEDSOLOMON_POLY,
 	                                  RS41_REEDSOLOMON_FIRST_ROOT,
 	                                  RS41_REEDSOLOMON_ROOT_SKIP,
 	                                  RS41_REEDSOLOMON_T);
-	memcpy(&_calibData, _defaultCalibData, sizeof(_defaultCalibData));
-	memset(_calibDataBitmap, 0xFF, sizeof(_calibDataBitmap));
-	_calibDataBitmap[sizeof(_calibDataBitmap)-1] &= ~((1 << (7 - (RS41_CALIB_FRAGCOUNT-1)%8)) - 1);
+	memcpy(&m_calibData, _defaultCalibData, sizeof(_defaultCalibData));
+	memset(m_calibDataBitmap, 0xFF, sizeof(m_calibDataBitmap));
+	m_calibDataBitmap[sizeof(m_calibDataBitmap)-1] &= ~((1 << (7 - (RS41_CALIB_FRAGCOUNT-1)%8)) - 1);
 
 
-	generic_block<RS41Decoder>::registerInput(_in);
+	generic_block<RS41Decoder>::registerInput(m_in);
 	generic_block<RS41Decoder>::_block_init = true;
 }
 
@@ -119,15 +119,15 @@ void
 RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 {
 	generic_block<RS41Decoder>::tempStop();
-	generic_block<RS41Decoder>::unregisterInput(_in);
+	generic_block<RS41Decoder>::unregisterInput(m_in);
 
-	_in = in;
-	_sondeData.init();
-	memset(_calibDataBitmap, 0xFF, sizeof(_calibDataBitmap));
-	_calibDataBitmap[sizeof(_calibDataBitmap)-1] &= ~((1 << (7 - (RS41_CALIB_FRAGCOUNT-1)%8)) - 1);
-	_calibrated = false;
+	m_in = in;
+	m_sondeData.init();
+	memset(m_calibDataBitmap, 0xFF, sizeof(m_calibDataBitmap));
+	m_calibDataBitmap[sizeof(m_calibDataBitmap)-1] &= ~((1 << (7 - (RS41_CALIB_FRAGCOUNT-1)%8)) - 1);
+	m_calibrated = false;
 
-	generic_block<RS41Decoder>::registerInput(_in);
+	generic_block<RS41Decoder>::registerInput(m_in);
 	generic_block<RS41Decoder>::tempStart();
 }
 
@@ -140,20 +140,20 @@ RS41Decoder::run()
 	int offset, outCount, numFrames, bytesLeft;
 
 	assert(generic_block<RS41Decoder>::_block_init);
-	if ((numFrames = _in->read()) < 0) return -1;
+	if ((numFrames = m_in->read()) < 0) return -1;
 
 	outCount = 0;
 	numFrames /= sizeof(*frame);
 
 	/* For each frame that was received */
 	for (int i=0; i<numFrames; i++) {
-		oldPressure = _sondeData.pressure;
-		_sondeData.pressure = -1;
-		frame = (RS41Frame*)(_in->readBuf + i*sizeof(*frame));
+		oldPressure = m_sondeData.pressure;
+		m_sondeData.pressure = -1;
+		frame = (RS41Frame*)(m_in->readBuf + i*sizeof(*frame));
 
 		/* Descramble and error correct */
 		descramble(frame);
-		if (_rs) rsCorrect(frame);
+		if (m_rs) rsCorrect(frame);
 
 		bytesLeft = RS41_DATA_LEN + (frame->extended_flag == RS41_FLAG_EXTENDED ? RS41_XDATA_LEN : 0);
 		offset = 0;
@@ -168,15 +168,15 @@ RS41Decoder::run()
 			if (!crcCheck(subframe)) continue;
 
 			/* Update the generic info struct with the data inside the subframe */
-			updateSondeData(&_sondeData, subframe);
+			updateSondeData(&m_sondeData, subframe);
 		}
 
-		if (_sondeData.pressure < 0) _sondeData.pressure = oldPressure;
-		_handler(&_sondeData, _ctx);
+		if (m_sondeData.pressure < 0) m_sondeData.pressure = oldPressure;
+		m_handler(&m_sondeData, m_ctx);
 		outCount++;
 	}
 
-	_in->flush();
+	m_in->flush();
 	return outCount;
 }
 
@@ -223,7 +223,7 @@ RS41Decoder::rsCorrect(RS41Frame *frame)
 		}
 
 		/* Error correct */
-		if (correct_reed_solomon_decode(_rs, rsBlock, RS41_REEDSOLOMON_N, rsBlock) < 0) valid = false;
+		if (correct_reed_solomon_decode(m_rs, rsBlock, RS41_REEDSOLOMON_N, rsBlock) < 0) valid = false;
 
 		/* Reinterleave */
 		for (i=0; i<chunk_len; i++) {
@@ -261,10 +261,10 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			status = (RS41Subframe_Status*)subframe;
 			updateCalibData(status);
 
-			info->calibrated = _calibrated;
+			info->calibrated = m_calibrated;
 			info->serial = status->serial;
 			info->serial[RS41_SERIAL_LEN] = 0;
-			info->burstkill = _calibData.burstkill_timer == 0xFFFF ? -1 : _calibData.burstkill_timer;
+			info->burstkill = m_calibData.burstkill_timer == 0xFFFF ? -1 : m_calibData.burstkill_timer;
 			info->seq = status->frame_seq;
 			break;
 		case RS41_SFTYPE_PTU:
@@ -313,14 +313,14 @@ RS41Decoder::updateCalibData(RS41Subframe_Status* status)
 
 	/* Copy the fragment and update the bitmap of the fragments left */
 	frag_offset = status->frag_seq * RS41_CALIB_FRAGSIZE;
-	memcpy((uint8_t*)&_calibData + frag_offset, status->frag_data, RS41_CALIB_FRAGSIZE);
-	_calibDataBitmap[status->frag_seq/8] &= ~(1 << (7-status->frag_seq%8));
+	memcpy((uint8_t*)&m_calibData + frag_offset, status->frag_data, RS41_CALIB_FRAGSIZE);
+	m_calibDataBitmap[status->frag_seq/8] &= ~(1 << (7-status->frag_seq%8));
 
 	/* Check if we have all the sub-segments populated */
-	for (i=0; i<sizeof(_calibDataBitmap); i++) {
-		if (_calibDataBitmap[i]) return;
+	for (i=0; i<sizeof(m_calibDataBitmap); i++) {
+		if (m_calibDataBitmap[i]) return;
 	}
-	_calibrated = true;
+	m_calibrated = true;
 }
 
 
@@ -347,18 +347,18 @@ RS41Decoder::temp(RS41Subframe_PTU *ptu)
 	adc_raw = (adc_main - adc_ref1) / (adc_ref2 - adc_ref1);
 
 	/* Compute resistance */
-	r_raw = _calibData.t_ref[0] + (_calibData.t_ref[1] - _calibData.t_ref[0])*adc_raw;
-	r_t = r_raw * _calibData.t_calib_coeff[0];
+	r_raw = m_calibData.t_ref[0] + (m_calibData.t_ref[1] - m_calibData.t_ref[0])*adc_raw;
+	r_t = r_raw * m_calibData.t_calib_coeff[0];
 
 	/* Compute temperature based on corrected resistance */
-	t_uncal = _calibData.t_temp_poly[0]
-	     + _calibData.t_temp_poly[1]*r_t
-	     + _calibData.t_temp_poly[2]*r_t*r_t;
+	t_uncal = m_calibData.t_temp_poly[0]
+	     + m_calibData.t_temp_poly[1]*r_t
+	     + m_calibData.t_temp_poly[2]*r_t*r_t;
 
 	t_cal = 0;
 	for (i=6; i>0; i--) {
 		t_cal *= t_uncal;
-		t_cal += _calibData.t_calib_coeff[i];
+		t_cal += m_calibData.t_calib_coeff[i];
 	}
 	t_cal += t_uncal;
 
@@ -392,14 +392,14 @@ RS41Decoder::rh(RS41Subframe_PTU *ptu)
 	rh_temp_cal = 0;
 	for (i=6; i>0; i--) {
 		rh_temp_cal *= rh_temp_uncal;
-		rh_temp_cal += _calibData.th_calib_coeff[i];
+		rh_temp_cal += m_calibData.th_calib_coeff[i];
 	}
 	rh_temp_cal += rh_temp_uncal;
 
 	/* Get raw capacitance of the RH sensor */
 	adc_raw = (adc_main - adc_ref1) / (adc_ref2 - adc_ref1);
-	c_raw = _calibData.rh_ref[0] + adc_raw * (_calibData.rh_ref[1] - _calibData.rh_ref[0]);
-	c_cal = (c_raw / _calibData.rh_cap_calib[0] - 1) * _calibData.rh_cap_calib[1];
+	c_raw = m_calibData.rh_ref[0] + adc_raw * (m_calibData.rh_ref[1] - m_calibData.rh_ref[0]);
+	c_cal = (c_raw / m_calibData.rh_cap_calib[0] - 1) * m_calibData.rh_cap_calib[1];
 
 	/* Derive raw RH% from capacitance and temperature response */
 	rh_uncal = 0;
@@ -408,7 +408,7 @@ RS41Decoder::rh(RS41Subframe_PTU *ptu)
 	for (i=0; i<7; i++) {
 		f2 = 1;
 		for (j=0; j<6; j++) {
-			rh_uncal += f1 * f2 * _calibData.rh_calib_coeff[i][j];
+			rh_uncal += f1 * f2 * m_calibData.rh_calib_coeff[i][j];
 			f2 *= rh_temp_cal;
 		}
 		f1 *= c_cal;
@@ -436,19 +436,19 @@ RS41Decoder::rh_temp(RS41Subframe_PTU *ptu)
 
 	/* If no reference or no calibration data, retern */
 	if (adc_ref2 - adc_ref1 == 0) return NAN;
-	if (!_calibData.t_ref[0] || !_calibData.t_ref[1]) return NAN;
+	if (!m_calibData.t_ref[0] || !m_calibData.t_ref[1]) return NAN;
 
 	/* Compute ADC gain and bias */
 	adc_raw = (adc_main - adc_ref1) / (adc_ref2 - adc_ref1);
 
 	/* Compute resistance */
-	r_raw = _calibData.t_ref[0] + adc_raw * (_calibData.t_ref[1] - _calibData.t_ref[0]);
-	r_t = r_raw * _calibData.th_calib_coeff[0];
+	r_raw = m_calibData.t_ref[0] + adc_raw * (m_calibData.t_ref[1] - m_calibData.t_ref[0]);
+	r_t = r_raw * m_calibData.th_calib_coeff[0];
 
 	/* Compute temperature based on corrected resistance */
-	t_uncal = _calibData.th_temp_poly[0]
-	     + _calibData.th_temp_poly[1]*r_t
-	     + _calibData.th_temp_poly[2]*r_t*r_t;
+	t_uncal = m_calibData.th_temp_poly[0]
+	     + m_calibData.th_temp_poly[1]*r_t
+	     + m_calibData.th_temp_poly[2]*r_t*r_t;
 
 	return t_uncal;
 }

@@ -4,21 +4,22 @@
 
 dsp::PolyphaseFilter::PolyphaseFilter(std::vector<float> coeffs, unsigned numPhases)
 {
-	_size = ceilf(coeffs.size() / numPhases);
-	_numPhases = numPhases;
-	_coeffs = coeffs;
-	_mem = new float[coeffs.size() / numPhases];
-	_idx = 0;
+	m_size = ceilf(coeffs.size() / numPhases);
+	m_numPhases = numPhases;
+	m_coeffs = coeffs;
+	m_mem = new float[coeffs.size() / numPhases];
+	m_idx = 0;
 }
 
 dsp::PolyphaseFilter::~PolyphaseFilter()
 {
+	delete m_mem;
 }
 
 void
 dsp::PolyphaseFilter::forward(float sample) {
-	_mem[_idx++] = sample;
-	_idx %= _size;
+	m_mem[m_idx++] = sample;
+	m_idx %= m_size;
 }
 
 float
@@ -26,18 +27,18 @@ dsp::PolyphaseFilter::get(unsigned phase) {
 	int i, j;
 	float result;
 
-	assert(phase < _numPhases);
+	assert(phase < m_numPhases);
 
 	result = 0;
-	j = _size * (_numPhases - phase - 1);
+	j = m_size * (m_numPhases - phase - 1);
 
 	/* Chunk 1: from current position to end */
-	for (i = _idx; i<_size; i++, j++) {
-		result += _mem[i] * _coeffs[j];
+	for (i = m_idx; i<m_size; i++, j++) {
+		result += m_mem[i] * m_coeffs[j];
 	}
 	/* Chunk 2: from start to current position - 1 */
-	for (i = 0; i < _idx; i++, j++) {
-		result += _mem[i] * _coeffs[j];
+	for (i = 0; i < m_idx; i++, j++) {
+		result += m_mem[i] * m_coeffs[j];
 	}
 
 	return result;

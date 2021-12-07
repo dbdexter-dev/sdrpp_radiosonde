@@ -16,6 +16,8 @@ dsp::GardnerResampler::~GardnerResampler()
 {
 	if (!generic_block<GardnerResampler>::_block_init) return;
 	generic_block<GardnerResampler>::stop();
+	generic_block<GardnerResampler>::unregisterInput(m_in);
+	generic_block<GardnerResampler>::unregisterOutput(&out);
 	generic_block<GardnerResampler>::_block_init = false;
 }
 
@@ -24,19 +26,19 @@ dsp::GardnerResampler::init(stream<float> *in, float symFreq, float damp, float 
 {
 	int numPhases = ceil(symFreq / targetSymFreq);  /* Oversample to get > 1/targetSymFreq samples per symbol */
 
-	_in = in;
-	_freq = _centerFreq = 2.0 * symFreq / numPhases;
-	_maxFreqDelta = maxFreqDelta / numPhases;
-	_phase = 0;
-	_avgMagnitude = TARGET_MAG;
-	_avgDC = 0;
-	_state = 1;
+	m_in = in;
+	m_freq = m_centerFreq = 2.0 * symFreq / numPhases;
+	m_maxFreqDelta = maxFreqDelta / numPhases;
+	m_phase = 0;
+	m_avgMagnitude = TARGET_MAG;
+	m_avgDC = 0;
+	m_state = 1;
 	update_alpha_beta(damp, bw);
 
-	_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2.0*symFreq, numPhases), numPhases);
+	m_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2.0*symFreq, numPhases), numPhases);
 
 
-	generic_block<GardnerResampler>::registerInput(_in);
+	generic_block<GardnerResampler>::registerInput(m_in);
 	generic_block<GardnerResampler>::registerOutput(&out);
 	generic_block<GardnerResampler>::_block_init = true;
 }
@@ -45,9 +47,9 @@ void
 dsp::GardnerResampler::setInput(stream<float>* in)
 {
 	generic_block<GardnerResampler>::tempStop();
-	generic_block<GardnerResampler>::unregisterInput(_in);
-	_in = in;
-	generic_block<GardnerResampler>::registerInput(_in);
+	generic_block<GardnerResampler>::unregisterInput(m_in);
+	m_in = in;
+	generic_block<GardnerResampler>::registerInput(m_in);
 	generic_block<GardnerResampler>::tempStart();
 }
 
@@ -56,11 +58,11 @@ dsp::GardnerResampler::setLoopParams(float symFreq, float damp, float bw, float 
 {
 	int numPhases = ceil(symFreq / targetSymFreq);  /* Oversample to get > 1/targetSymFreq samples per symbol */
 
-	_freq = _centerFreq = 2.0 * symFreq / numPhases;
-	_maxFreqDelta = maxFreqDelta / numPhases;
+	m_freq = m_centerFreq = 2.0 * symFreq / numPhases;
+	m_maxFreqDelta = maxFreqDelta / numPhases;
 	update_alpha_beta(damp, bw);
 
-	_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2.0*symFreq, numPhases), numPhases);
+	m_flt = dsp::PolyphaseFilter(dsp::PolyphaseFilter::sincCoeffs(INTERP_FILTER_ORDER, 2.0*symFreq, numPhases), numPhases);
 }
 
 int
@@ -70,33 +72,33 @@ dsp::GardnerResampler::run()
 	int i, phase, count, outCount;
 
 	assert(generic_block<GardnerResampler>::_block_init);
-	if ((count = _in->read()) < 0) return -1;
+	if ((count = m_in->read()) < 0) return -1;
 
 	outCount = 0;
 	for (i=0; i<count; i++) {
-		sample = _in->readBuf[i];
+		sample = m_in->readBuf[i];
 
-		_avgDC = _avgDC * (1-BIAS_POLE) + sample * BIAS_POLE;
-		sample -= _avgDC;
+		m_avgDC = m_avgDC * (1-BIAS_POLE) + sample * BIAS_POLE;
+		sample -= m_avgDC;
 		/* Keep sample amplitude more or less constant */
 		if (sample != 0) {
-			_avgMagnitude = _avgMagnitude * (1-AGC_POLE) + fabs(sample) * AGC_POLE;
-			sample *= TARGET_MAG/_avgMagnitude;
+			m_avgMagnitude = m_avgMagnitude * (1-AGC_POLE) + fabs(sample) * AGC_POLE;
+			sample *= TARGET_MAG/m_avgMagnitude;
 		}
 
 		/* Feed sample to oversampling filter */
-		_flt.forward(sample);
+		m_flt.forward(sample);
 
 		/* Check if any of the filter phases corresponds to a slot to sample */
-		for (phase = 0; phase < _flt.getNumPhases(); phase++) {
+		for (phase = 0; phase < m_flt.getNumPhases(); phase++) {
 			switch (advance_timeslot()) {
 				case 1:
 					/* Inter-sample slot */
-					_interSample = _flt.get(phase);
+					m_interSample = m_flt.get(phase);
 					break;
 				case 2:
 					/* Sample slot */
-					sample = _flt.get(phase);
+					sample = m_flt.get(phase);
 					retime(sample);
 					out.writeBuf[outCount] = sample;
 					outCount++;
@@ -107,7 +109,7 @@ dsp::GardnerResampler::run()
 		}
 	}
 
-	_in->flush();
+	m_in->flush();
 	if (outCount > 0 && !out.swap(outCount)) return -1;
 	return outCount;
 }
@@ -119,8 +121,8 @@ dsp::GardnerResampler::update_alpha_beta(float damp, float bw)
 {
 	const float denom = (1.0 + 2.0*damp*bw + bw*bw);
 
-	_alpha = 4.0*damp*bw/denom;
-	_beta = 4.0*bw*bw/denom;
+	m_alpha = 4.0*damp*bw/denom;
+	m_beta = 4.0*bw*bw/denom;
 }
 
 int
@@ -128,11 +130,11 @@ dsp::GardnerResampler::advance_timeslot()
 {
 	int ret;
 
-	_phase += _freq;
+	m_phase += m_freq;
 
-	if (_phase >= _state) {
-		ret = _state;
-		_state = (_state % 2) + 1;
+	if (m_phase >= m_state) {
+		ret = m_state;
+		m_state = (m_state % 2) + 1;
 		return ret;
 	}
 
@@ -143,26 +145,26 @@ void
 dsp::GardnerResampler::retime(float sample)
 {
 	updateEstimate(error(sample));
-	_prevSample = sample;
+	m_prevSample = sample;
 }
 
 float
 dsp::GardnerResampler::error(float sample)
 {
 	/* If no transition, don't attempt any correction */
-	if (!((sample > 0) ^ (_prevSample > 0))) return 0;
-	return (sample - _prevSample) * _interSample;
+	if (!((sample > 0) ^ (m_prevSample > 0))) return 0;
+	return (sample - m_prevSample) * m_interSample;
 }
 
 void
 dsp::GardnerResampler::updateEstimate(float error)
 {
-	float freqDelta = _freq - _centerFreq;
+	float freqDelta = m_freq - m_centerFreq;
 
-	_phase -= 2 - fmax(-2, fmin(2, error * _alpha));
-	freqDelta += error * _beta;
+	m_phase -= 2 - fmax(-2, fmin(2, error * m_alpha));
+	freqDelta += error * m_beta;
 
-	freqDelta = fmax(-_maxFreqDelta, fmin(_maxFreqDelta, freqDelta));
-	_freq = _centerFreq + freqDelta;
+	freqDelta = fmax(-m_maxFreqDelta, fmin(m_maxFreqDelta, freqDelta));
+	m_freq = m_centerFreq + freqDelta;
 }
 /* }}} */

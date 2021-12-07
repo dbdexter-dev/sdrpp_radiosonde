@@ -18,14 +18,14 @@ public:
 	int run() override;
 
 private:
-	void *_ctx;
-	void (*_handler)(SondeData *data, void *ctx);
-	dsp::stream<uint8_t> *_in;
-	correct_reed_solomon *_rs;
-	RS41Calibration _calibData;
-	SondeData _sondeData;
-	uint8_t _calibDataBitmap[sizeof(RS41Calibration)/8/RS41_CALIB_FRAGSIZE+1];
-	bool _calibrated;
+	void *m_ctx;
+	void (*m_handler)(SondeData *data, void *ctx);
+	dsp::stream<uint8_t> *m_in;
+	correct_reed_solomon *m_rs;
+	RS41Calibration m_calibData;
+	SondeData m_sondeData;
+	uint8_t m_calibDataBitmap[sizeof(RS41Calibration)/8/RS41_CALIB_FRAGSIZE+1];
+	bool m_calibrated;
 
 	void descramble(RS41Frame *frame);
 	bool rsCorrect(RS41Frame *frame);

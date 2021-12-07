@@ -8,19 +8,19 @@
 bool
 GPXWriter::init(const char *fname)
 {
-	if (_fd) deinit();
+	if (m_fd) deinit();
 
-	_fd = fopen(fname, "wb");
-	if (!_fd) return false;
+	m_fd = fopen(fname, "wb");
+	if (!m_fd) return false;
 
-	_lat = _lon = _alt = 0;
+	m_lat = m_lon = m_alt = 0;
 
-	_trackActive = false;
-	fprintf(_fd,
+	m_trackActive = false;
+	fprintf(m_fd,
 			"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"
 			"<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" version=\"1.1\" creator=\"SDR++\">\n"
 	);
-	_offset = ftell(_fd);
+	m_offset = ftell(m_fd);
 	terminateFile();
 	return true;
 }
@@ -28,28 +28,28 @@ GPXWriter::init(const char *fname)
 void
 GPXWriter::deinit()
 {
-	if (!_fd) return;
+	if (!m_fd) return;
 	terminateFile();
-	fclose(_fd);
-	_fd = NULL;
+	fclose(m_fd);
+	m_fd = NULL;
 }
 
 void
 GPXWriter::startTrack(const char *name)
 {
-	if (!_fd) return;
-	if (_trackActive && !strcmp(name, sondeSerial)) return;
+	if (!m_fd) return;
+	if (m_trackActive && !strcmp(name, sondeSerial)) return;
 
-	if (_trackActive) {
+	if (m_trackActive) {
 		stopTrack();
 	}
 
 	strncpy(sondeSerial, name, sizeof(sondeSerial)-1);
 
-	fseek(_fd, _offset, SEEK_SET);
-	fprintf(_fd, "<trk>\n<name>%s</name>\n<trkseg>\n", name);
-	_offset = ftell(_fd);
-	_trackActive = true;
+	fseek(m_fd, m_offset, SEEK_SET);
+	fprintf(m_fd, "<trk>\n<name>%s</name>\n<trkseg>\n", name);
+	m_offset = ftell(m_fd);
+	m_trackActive = true;
 
 	terminateFile();
 }
@@ -58,33 +58,33 @@ GPXWriter::startTrack(const char *name)
 void
 GPXWriter::stopTrack()
 {
-	if (!_fd || !_trackActive) return;
+	if (!m_fd || !m_trackActive) return;
 	stopTrackInternal();
-	_trackActive = false;
+	m_trackActive = false;
 	terminateFile();
 }
 
 void
 GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt)
 {
-	if (!_fd || !_trackActive) return;
-	fseek(_fd, _offset, SEEK_SET);
+	if (!m_fd || !m_trackActive) return;
+	fseek(m_fd, m_offset, SEEK_SET);
 	char timestr[sizeof("YYYY-MM-DDThh:mm:ssZ")+1];
 
 	if (isnan(lat) || isnan(lon) || isnan(alt)) return;
 	if (lat == 0 && lon == 0 && alt == 0) return;       /* -ffast-math breaks NaN */
-	if (lat == _lat && lon == _lon && alt == _alt) return;
+	if (lat == m_lat && lon == m_lon && alt == m_alt) return;
 
-	_lat = lat;
-	_lon = lon;
-	_alt = alt;
+	m_lat = lat;
+	m_lon = lon;
+	m_alt = alt;
 
 	strftime(timestr, sizeof(timestr), GPX_TIME_FORMAT, gmtime(&time));
-	fprintf(_fd, "<trkpt lat=\"%f\" lon=\"%f\">\n", lat, lon);
-	fprintf(_fd, "<ele>%f</ele>\n", alt);
-	fprintf(_fd, "<time>%s</time>\n", timestr);
-	fprintf(_fd, "</trkpt>\n");
-	_offset = ftell(_fd);
+	fprintf(m_fd, "<trkpt lat=\"%f\" lon=\"%f\">\n", lat, lon);
+	fprintf(m_fd, "<ele>%f</ele>\n", alt);
+	fprintf(m_fd, "<time>%s</time>\n", timestr);
+	fprintf(m_fd, "</trkpt>\n");
+	m_offset = ftell(m_fd);
 
 	terminateFile();
 }
@@ -92,25 +92,25 @@ GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt)
 void
 GPXWriter::terminateFile()
 {
-	unsigned long offset = _offset;
-	if (!_fd) return;
+	unsigned long offset = m_offset;
+	if (!m_fd) return;
 
-	fseek(_fd, _offset, SEEK_SET);
+	fseek(m_fd, m_offset, SEEK_SET);
 
-	if (_trackActive) stopTrackInternal();
+	if (m_trackActive) stopTrackInternal();
 
-	fprintf(_fd, "</gpx>\n");
-	fflush(_fd);
-	_offset = offset;
+	fprintf(m_fd, "</gpx>\n");
+	fflush(m_fd);
+	m_offset = offset;
 }
 
 void
 GPXWriter::stopTrackInternal()
 {
-	if (!_fd) return;
-	fseek(_fd, _offset, SEEK_SET);
-	fprintf(_fd, "</trkseg>\n</trk>\n");
-	_offset = ftell(_fd);
+	if (!m_fd) return;
+	fseek(m_fd, m_offset, SEEK_SET);
+	fprintf(m_fd, "</trkseg>\n</trk>\n");
+	m_offset = ftell(m_fd);
 
 }
 
