@@ -35,6 +35,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	std::string gpxPath, ptuPath;
 
 	this->name = name;
+	selectedType = -1;
 
 	config.acquire();
 	if (!config.conf.contains(name)) {
@@ -394,9 +395,7 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 
 	/* Update framer parameters */
 	_this->framer.stop();
-	_this->framer.setInput(&_this->slicer.out);
-	_this->framer.setSyncWord(syncWord, syncLen);
-	_this->framer.setFrameLen(frameLen);
+	_this->framer.init(&_this->slicer.out, syncWord, syncLen, frameLen);
 	_this->framer.start();
 
 	/* Spin up the appropriate decoder */

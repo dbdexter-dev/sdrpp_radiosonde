@@ -57,9 +57,11 @@ dsp::Framer::setSyncWord(uint64_t syncWord, int syncLen)
 void
 dsp::Framer::setFrameLen(int frameLen)
 {
-	generic_block<Framer>::unregisterOutput(&out);
+	delete _rawData;
+	_rawData = new uint8_t[2*frameLen];
 	_frameLen = frameLen;
-	generic_block<Framer>::registerOutput(&out);
+	_dataOffset = 0;
+	_state = READ;
 }
 
 int
