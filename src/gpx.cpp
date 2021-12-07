@@ -11,7 +11,7 @@ GPXWriter::init(const char *fname)
 	if (_fd) deinit();
 
 	_fd = fopen(fname, "wb");
-	if (!_fd) return false;;
+	if (!_fd) return false;
 
 	_trackActive = false;
 	fprintf(_fd,

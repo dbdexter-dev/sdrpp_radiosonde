@@ -36,6 +36,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 
 	this->name = name;
 	selectedType = -1;
+	activeDecoder = NULL;
 
 	config.acquire();
 	if (!config.conf.contains(name)) {
@@ -284,7 +285,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	}
 	/* }}} */
 	/* GPX output file {{{ */
-	gpxStatusChanged = ImGui::Checkbox("GPX track", &_this->gpxOutput);
+	gpxStatusChanged = ImGui::Checkbox(CONCAT("GPX track##_gpx_track_", _this->name), &_this->gpxOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
 	gpxStatusChanged |= ImGui::InputText(CONCAT("##_gpx_fname_", _this->name), _this->gpxFilename, sizeof(gpxFilename)-1,
@@ -292,7 +293,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	if (gpxStatusChanged) onGPXOutputChanged(ctx);
 	/* }}} */
 	/* Log output file {{{ */
-	ptuStatusChanged = ImGui::Checkbox("Log data", &_this->ptuOutput);
+	ptuStatusChanged = ImGui::Checkbox(CONCAT("Log data##_ptu_log_", _this->name), &_this->ptuOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
 	ptuStatusChanged |= ImGui::InputText(CONCAT("##_ptu_fname_", _this->name), _this->ptuFilename, sizeof(ptuFilename)-1,

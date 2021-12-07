@@ -149,6 +149,8 @@ dsp::GardnerResampler::retime(float sample)
 float
 dsp::GardnerResampler::error(float sample)
 {
+	/* If no transition, don't attempt any correction */
+	if (!((sample > 0) ^ (_prevSample > 0))) return 0;
 	return (sample - _prevSample) * _interSample;
 }
 
