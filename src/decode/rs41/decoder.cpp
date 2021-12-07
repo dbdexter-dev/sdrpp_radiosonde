@@ -92,6 +92,7 @@ RS41Decoder::~RS41Decoder()
 {
 	if (!generic_block<RS41Decoder>::_block_init) return;
 	generic_block<RS41Decoder>::stop();
+	generic_block<RS41Decoder>::unregisterInput(m_in);
 	generic_block<RS41Decoder>::_block_init = false;
 }
 

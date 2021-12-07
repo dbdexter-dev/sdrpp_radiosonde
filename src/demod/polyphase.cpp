@@ -13,7 +13,6 @@ dsp::PolyphaseFilter::PolyphaseFilter(std::vector<float> coeffs, unsigned numPha
 
 dsp::PolyphaseFilter::~PolyphaseFilter()
 {
-	delete m_mem;
 }
 
 void

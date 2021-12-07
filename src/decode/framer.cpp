@@ -15,8 +15,9 @@ dsp::Framer::Framer(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int fra
 dsp::Framer::~Framer()
 {
 	if (!generic_block<Framer>::_block_init) return;
-	delete m_rawData;
 	generic_block<Framer>::stop();
+	generic_block<Framer>::unregisterInput(m_in);
+	generic_block<Framer>::unregisterOutput(&out);
 	generic_block<Framer>::_block_init = false;
 }
 
@@ -41,9 +42,11 @@ dsp::Framer::setInput(stream<uint8_t> *in)
 {
 	generic_block<Framer>::tempStop();
 	generic_block<Framer>::unregisterInput(m_in);
+
 	m_in = in;
 	m_state = READ;
 	m_dataOffset = 0;
+
 	generic_block<Framer>::registerInput(m_in);
 	generic_block<Framer>::tempStart();
 }
@@ -58,7 +61,7 @@ dsp::Framer::setSyncWord(uint64_t syncWord, int syncLen)
 void
 dsp::Framer::setFrameLen(int frameLen)
 {
-	delete m_rawData;
+	delete[] m_rawData;
 	m_rawData = new uint8_t[2*frameLen];
 	m_frameLen = frameLen;
 	m_dataOffset = 0;
@@ -85,10 +88,6 @@ dsp::Framer::run()
 				numBytes = std::min(m_frameLen - m_dataOffset/8, count);
 				memcpy(m_rawData + CEILDIV(m_dataOffset, 8), src, numBytes);
 
-				if (m_dataOffset % 8) {
-					bitpack(m_rawData + m_dataOffset/8, m_rawData+CEILDIV(m_dataOffset, 8), m_dataOffset%8, numBytes*8);
-				}
-
 				count -= numBytes;
 				m_dataOffset += 8*numBytes;
 				src += numBytes;
@@ -100,10 +99,15 @@ dsp::Framer::run()
 					return outCount;
 				}
 
+				/* Repack bits if there was an initial offset */
+				if (m_dataOffset % 8) {
+					bitpack(m_rawData, m_rawData+1, m_dataOffset%8, m_frameLen*8);
+				}
+
 				/* Find offset with the highest correlation */
 				m_syncOffset = correlateU64(&inverted, m_rawData, m_frameLen);
 				m_state = DEOFFSET;
-				__attribute__((fallthrough));
+				break;
 
 			case DEOFFSET:
 
@@ -111,9 +115,6 @@ dsp::Framer::run()
 				numBytes = std::min(m_frameLen - (m_dataOffset-m_syncOffset)/8, count);
 				memcpy(m_rawData + CEILDIV(m_dataOffset, 8), src, numBytes);
 
-				if (m_dataOffset % 8) {
-					bitpack(m_rawData + m_dataOffset/8, m_rawData+CEILDIV(m_dataOffset, 8), m_dataOffset%8, numBytes*8);
-				}
 				src += numBytes;
 				count -= numBytes;
 				m_dataOffset += 8*numBytes;
@@ -125,10 +126,21 @@ dsp::Framer::run()
 					return outCount;
 				}
 
+				/* Repack bits if there was an initial offset */
+				if (m_dataOffset % 8) {
+					bitpack(m_rawData + m_frameLen, m_rawData + m_frameLen + 1, m_dataOffset%8, m_syncOffset);
+				}
+
 				/* Copy bits into a new frame */
 				bitcpy(m_rawData, m_rawData, m_syncOffset, 8*m_frameLen);
-				for (i=0; i<m_frameLen; i++) {
-					out.writeBuf[outCount++] = inverted ? 0xFF ^m_rawData[i] : m_rawData[i];
+				if (inverted) {
+					for (i=0; i<m_frameLen; i++) {
+						out.writeBuf[outCount++] = 0xFF ^ m_rawData[i];
+					}
+				} else {
+					for (i=0; i<m_frameLen; i++) {
+						out.writeBuf[outCount++] = m_rawData[i];
+					}
 				}
 
 				/* If the offset is not byte-aligned, copy the last bits to the
