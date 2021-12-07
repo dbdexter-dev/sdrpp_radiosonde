@@ -13,6 +13,8 @@ GPXWriter::init(const char *fname)
 	_fd = fopen(fname, "wb");
 	if (!_fd) return false;
 
+	_lat = _lon = _alt = 0;
+
 	_trackActive = false;
 	fprintf(_fd,
 			"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n"
@@ -71,6 +73,11 @@ GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt)
 
 	if (isnan(lat) || isnan(lon) || isnan(alt)) return;
 	if (lat == 0 && lon == 0 && alt == 0) return;       /* -ffast-math breaks NaN */
+	if (lat == _lat && lon == _lon && alt == _alt) return;
+
+	_lat = lat;
+	_lon = lon;
+	_alt = alt;
 
 	strftime(timestr, sizeof(timestr), GPX_TIME_FORMAT, gmtime(&time));
 	fprintf(_fd, "<trkpt lat=\"%f\" lon=\"%f\">\n", lat, lon);

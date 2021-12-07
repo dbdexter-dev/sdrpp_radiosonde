@@ -48,4 +48,6 @@ private:
 	unsigned long _offset;
 	bool _trackActive;
 	char sondeSerial[64];
+
+	float _lat, _lon, _alt;
 };
