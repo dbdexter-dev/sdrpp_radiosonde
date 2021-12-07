@@ -27,12 +27,14 @@ ConfigManager config;
 
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
+	float symRate, bw;
+	uint64_t syncWord;
+	int syncLen, frameLen;
 	bool created = false;
 	int typeToSelect;
 	std::string gpxPath, ptuPath;
 
 	this->name = name;
-	selectedType = -1;
 
 	config.acquire();
 	if (!config.conf.contains(name)) {
@@ -48,6 +50,9 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 
 	symRate = std::get<1>(supportedTypes[typeToSelect]);
 	bw = std::get<2>(supportedTypes[typeToSelect]);
+	syncWord = std::get<3>(supportedTypes[typeToSelect]);
+	syncLen = std::get<4>(supportedTypes[typeToSelect]);
+	frameLen = std::get<5>(supportedTypes[typeToSelect]);
 
 	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
 	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
@@ -55,9 +60,9 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
 	fmDemod.init(vfo->output, bw, bw/2.0f);
-	resampler.init(&fmDemod.out, symRate, GARDNER_DAMP, symRate/250, symRate/1e4);
+	resampler.init(&fmDemod.out, symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
 	slicer.init(&resampler.out);
-	framer.init(&slicer.out, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN);
+	framer.init(&slicer.out, syncWord, syncLen, frameLen);
 
 	rs41Decoder.init(&framer.out, sondeDataHandler, this);
 	nullDecoder.init(&framer.out, sondeDataHandler, this);
@@ -96,8 +101,8 @@ RadiosondeDecoderModule::enable() {
 
 void
 RadiosondeDecoderModule::disable() {
-	nullDecoder.stop();
-	rs41Decoder.stop();
+	if (activeDecoder) activeDecoder->stop();
+	activeDecoder = NULL;
 
 	framer.stop();
 	slicer.stop();
@@ -350,21 +355,32 @@ void
 RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 {
 	float symRate, bw;
+	uint64_t syncWord;
+	int syncLen, frameLen;
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 
-	switch (_this->selectedType) {
-		case 0: /* RS41 */
-			_this->rs41Decoder.stop();
-			break;
-		default:
-			_this->nullDecoder.stop();
-			break;
-	}
+	/* Ensure that the selection is within bounds */
+	if (selection > sizeof(_this->supportedTypes)/sizeof(_this->supportedTypes[0])) return;
 
+	/* Spin down the currently active decoder */
+	if (_this->activeDecoder) _this->activeDecoder->stop();
+	_this->activeDecoder = NULL;
+
+	/* If selection is negative, just stop here */
+	if (selection < 0) return;
+	_this->selectedType = selection;
+
+	/* Save selection to config */
+	config.acquire();
+	config.conf[_this->name]["sondeType"] = selection;
+	config.release(true);
+
+	/* Retrieve new selection parameters */
 	symRate = std::get<1>(_this->supportedTypes[selection]);
 	bw = std::get<2>(_this->supportedTypes[selection]);
-	_this->bw = bw;
-	_this->symRate = symRate/bw;
+	syncWord = std::get<3>(_this->supportedTypes[selection]);
+	syncLen = std::get<4>(_this->supportedTypes[selection]);
+	frameLen = std::get<5>(_this->supportedTypes[selection]);
 
 	/* Update VFO */
 	_this->fmDemod.stop();
@@ -374,26 +390,18 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->fmDemod.start();
 
 	/* Update resampler parameters */
-	_this->resampler.setLoopParams(_this->symRate, GARDNER_DAMP, _this->symRate/250, _this->symRate/1e4);
+	_this->resampler.setLoopParams(symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
 
+	/* Update framer parameters */
+	_this->framer.stop();
+	_this->framer.setInput(&_this->slicer.out);
+	_this->framer.setSyncWord(syncWord, syncLen);
+	_this->framer.setFrameLen(frameLen);
+	_this->framer.start();
 
-	switch (selection) {
-		case 0: /* RS41 */
-			_this->rs41Decoder.setInput(&_this->framer.out);
-			_this->rs41Decoder.start();
-			break;
-		default:
-			_this->nullDecoder.setInput(&_this->framer.out);
-			_this->nullDecoder.start();
-			break;
-	}
-
-	_this->selectedType = selection;
-	if (selection >= 0) {
-		config.acquire();
-		config.conf[_this->name]["sondeType"] = selection;
-		config.release(true);
-	}
+	/* Spin up the appropriate decoder */
+	_this->activeDecoder = std::get<6>(_this->supportedTypes[selection]);
+	_this->activeDecoder->start();
 }
 /* }}} */
 

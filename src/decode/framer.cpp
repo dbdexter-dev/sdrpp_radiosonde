@@ -47,6 +47,21 @@ dsp::Framer::setInput(stream<uint8_t> *in)
 	generic_block<Framer>::tempStart();
 }
 
+void
+dsp::Framer::setSyncWord(uint64_t syncWord, int syncLen)
+{
+	_syncWord = syncWord;
+	_syncLen = syncLen;
+}
+
+void
+dsp::Framer::setFrameLen(int frameLen)
+{
+	generic_block<Framer>::unregisterOutput(&out);
+	_frameLen = frameLen;
+	generic_block<Framer>::registerOutput(&out);
+}
+
 int
 dsp::Framer::run()
 {

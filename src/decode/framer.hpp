@@ -11,6 +11,8 @@ namespace dsp {
 
 		void init(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int frameLen);
 		void setInput(stream<uint8_t> *in);
+		void setSyncWord(uint64_t syncWord, int syncLen);
+		void setFrameLen(int frameLen);
 		int run();
 
 		stream<uint8_t> out;

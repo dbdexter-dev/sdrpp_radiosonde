@@ -18,6 +18,7 @@ NullDecoder::~NullDecoder()
 void
 NullDecoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx)
 {
+	_in = in;
 	generic_block<NullDecoder>::registerInput(_in);
 	generic_block<NullDecoder>::_block_init = true;
 }

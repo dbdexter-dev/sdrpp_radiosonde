@@ -11,12 +11,13 @@
 #include "gpx.hpp"
 #include "ptu.hpp"
 
+typedef std::tuple<const char*, float, float, uint64_t, int, int, dsp::generic_unnamed_block*> sondespec_t;
+
 class RadiosondeDecoderModule : public ModuleManager::Instance {
 public:
 	RadiosondeDecoderModule(std::string name);
 	~RadiosondeDecoderModule();
 
-	/* Overrides for virtual methods in ModuleManager::Instance */
 	void postInit() override;
 	void enable() override;
 	void disable() override;
@@ -28,12 +29,6 @@ private:
 	bool gpxOutput = false, ptuOutput = false;
 	char gpxFilename[2048];
 	char ptuFilename[2048];
-	int selectedType;
-	const std::tuple<const char*, float, float> supportedTypes[1] = {
-		std::tuple<const char*, float, float>("RS41", 4800.0, 1e4),
-	};
-
-	float symRate, bw;
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
 	dsp::GardnerResampler resampler;
@@ -41,6 +36,13 @@ private:
 	dsp::Framer framer;
 	RS41Decoder rs41Decoder;
 	NullDecoder nullDecoder;
+
+	const sondespec_t supportedTypes[2] = {
+		sondespec_t("RS41", 4800.0, 1e4, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN, &rs41Decoder),
+	};
+	int selectedType = -1;
+	dsp::generic_unnamed_block *activeDecoder;
+
 	SondeData lastData;
 	GPXWriter gpxWriter;
 	PTUWriter ptuWriter;
