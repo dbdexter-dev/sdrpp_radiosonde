@@ -8,7 +8,7 @@ PTUWriter::init(const char *fname)
 	m_fd = fopen(fname, "wb");
 	if(!m_fd) return false;
 
-	fprintf(m_fd, "Epoch,Temperature,Relative humidity,Dew point,Pressure,Latitude,Longitude,Altitude,Speed,Heading,Climb\n");
+	fprintf(m_fd, "Epoch,Temperature,Relative humidity,Dew point,Pressure,Latitude,Longitude,Altitude,Speed,Heading,Climb,XDATA\n");
 
 	return true;
 }
@@ -22,9 +22,14 @@ PTUWriter::deinit()
 }
 
 void
-PTUWriter::addPoint(time_t utc, float temp, float rh, float dewpt, float pressure, float lat, float lon, float alt, float spd, float hdg, float climb)
+PTUWriter::addPoint(SondeData *data)
 {
 	if (!m_fd) return;
-	fprintf(m_fd, "%ld,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%.1f,%.1f,%.1f,%.1f\n", utc, temp, rh, dewpt, pressure, lat, lon, alt, spd, hdg, climb);
+	fprintf(m_fd, "%ld,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%.1f,%.1f,%.1f,%.1f,%s\n",
+			data->time,
+			data->temp, data->rh, data->dewpt, data->pressure,
+			data->lat, data->lon, data->alt,
+			data->spd, data->hdg, data->climb,
+			data->auxData.c_str());
 	fflush(m_fd);
 }
