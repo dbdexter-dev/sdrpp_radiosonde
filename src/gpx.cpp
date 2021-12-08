@@ -14,7 +14,7 @@ GPXWriter::init(const char *fname)
 	m_fd = fopen(fname, "wb");
 	if (!m_fd) return false;
 
-	m_lat = m_lon = m_alt = 0;
+	m_lat = m_lon = m_alt = m_time = 0;
 
 	m_trackActive = false;
 	fprintf(m_fd,
@@ -75,11 +75,12 @@ GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt)
 
 	if (isnan(lat) || isnan(lon) || isnan(alt)) return;
 	if (lat == 0 && lon == 0 && alt == 0) return;       /* -ffast-math breaks NaN */
-	if (lat == m_lat && lon == m_lon && alt == m_alt) return;
+	if (time == m_time || (lat == m_lat && lon == m_lon && alt == m_alt)) return;
 
 	m_lat = lat;
 	m_lon = lon;
 	m_alt = alt;
+	m_time = time;
 
 	strftime(timestr, sizeof(timestr), GPX_TIME_FORMAT, gmtime(&time));
 	fprintf(m_fd, "<trkpt lat=\"%f\" lon=\"%f\">\n", lat, lon);

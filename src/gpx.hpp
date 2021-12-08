@@ -50,4 +50,5 @@ private:
 	char sondeSerial[64];
 
 	float m_lat, m_lon, m_alt;
+	time_t m_time;
 };
