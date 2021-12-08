@@ -16,10 +16,10 @@ option(OPT_BUILD_RADIOSONDE_DECODER "Build the radiosonde decoder module (no dep
    following lines:
 ```
 if (OPT_BUILD_RADIOSONDE_DECODER)
-add_subdirectory("decoder_modules/radiosonde_decoder")
+add_subdirectory("decoder_modules/sdrpp_radiosonde")
 endif(OPT_BUILD_RADIOSONDE_DECODER)
 ```
-4. Navigate to the `decoder_modules` folder, then clone this repository in the `radiosonde_decoder` folder: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde radiosonde_decoder`
+4. Navigate to the `decoder_modules` folder, then clone this repository: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde`
 5. Build SDR++ as usual: `cd .. && mkdir build && cd build && cmake .. && make && sudo make install`
 6. Enable the module by adding it via the module manager
 

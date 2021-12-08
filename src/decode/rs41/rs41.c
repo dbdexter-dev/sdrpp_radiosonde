@@ -30,7 +30,7 @@ rs41_descramble(RS41Frame *frame)
 		for (j=0; j<8; j++) {
 			tmp |= ((rawFrame[i] >> (7-j)) & 0x1) << j;
 		}
-		rawFrame[i] = 0xFF ^ tmp ^ _prn[i % RS41_PRN_PERIOD];
+		rawFrame[i] = tmp ^ _prn[i % RS41_PRN_PERIOD];
 	}
 }
 

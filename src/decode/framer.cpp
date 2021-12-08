@@ -135,7 +135,7 @@ dsp::Framer::run()
 
 				/* Copy bits into a new frame */
 				bitcpy(m_rawData, m_rawData, m_syncOffset, 8*m_frameLen);
-				if (inverted) {
+				if (!inverted) {
 					for (i=0; i<m_frameLen; i++) {
 						out.writeBuf[outCount++] = 0xFF ^ m_rawData[i];
 					}
