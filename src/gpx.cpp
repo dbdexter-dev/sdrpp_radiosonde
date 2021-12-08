@@ -67,7 +67,7 @@ GPXWriter::stopTrack()
 }
 
 void
-GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt)
+GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt, float spd, float hdg)
 {
 	if (!m_fd || !m_trackActive) return;
 	fseek(m_fd, m_offset, SEEK_SET);
@@ -84,8 +84,10 @@ GPXWriter::addTrackPoint(time_t time, float lat, float lon, float alt)
 
 	strftime(timestr, sizeof(timestr), GPX_TIME_FORMAT, gmtime(&time));
 	fprintf(m_fd, "<trkpt lat=\"%f\" lon=\"%f\">\n", lat, lon);
-	fprintf(m_fd, "<ele>%f</ele>\n", alt);
 	fprintf(m_fd, "<time>%s</time>\n", timestr);
+	fprintf(m_fd, "<ele>%f</ele>\n", alt);
+	fprintf(m_fd, "<speed>%f</speed>\n", spd);
+	fprintf(m_fd, "<course>%f</course>\n", hdg);
 	fprintf(m_fd, "</trkpt>\n");
 	m_offset = ftell(m_fd);
 

@@ -321,7 +321,7 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 	if (data->serial != "") {
 		_this->gpxWriter.startTrack(data->serial.c_str());
 	}
-	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt);
+	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt, data->spd, data->hdg);
 	_this->ptuWriter.addPoint(data);
 }
 

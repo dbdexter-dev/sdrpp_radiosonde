@@ -38,8 +38,10 @@ public:
 	 * @param lat latitude of the point, in degrees
 	 * @param lot longitude of the point, in degrees
 	 * @param alt altitude of the point, in meters
+	 * @param spd GPS speed, in meters per second
+	 * @param hdg heading, in degrees
 	 */
-	void addTrackPoint(time_t time, float lat, float lon, float alt);
+	void addTrackPoint(time_t time, float lat, float lon, float alt, float spd, float hdg);
 
 private:
 	void terminateFile();
