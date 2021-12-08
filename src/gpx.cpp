@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <ctype.h>
 #include "gpx.hpp"
 
 #define GPX_TIME_FORMAT "%Y-%m-%dT%H:%M:%SZ"
@@ -39,6 +40,7 @@ GPXWriter::startTrack(const char *name)
 {
 	if (!m_fd) return;
 	if (m_trackActive && !strcmp(name, sondeSerial)) return;
+	for (int i=0; name[i] != '\0'; i++) if (!isalnum(name[i])) return;
 
 	if (m_trackActive) {
 		stopTrack();
