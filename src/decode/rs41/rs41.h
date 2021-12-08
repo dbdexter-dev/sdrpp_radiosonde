@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <correct.h>
 
 /* Physical parameters */
 #define RS41_BAUDRATE 4800
@@ -45,6 +46,7 @@
 #define RS41_FLIGHT_STATUS_MODE_MSK 0x1         /* 0 = preparing, 1 = in flight */
 #define RS41_FLIGHT_STATUS_DESCEND_MSK 0x2      /* 0 = ascending, 1 = descending */
 #define RS41_FLIGHT_STATUS_VBAT_LOW (1 << 12)   /* 0 = battery ok, 1 = battery low */
+
 
 typedef struct {
 	uint8_t syncword[RS41_SYNC_LEN];
@@ -143,8 +145,7 @@ typedef struct {
 } __attribute__((packed)) RS41Subframe_XDATA;
 
 /* }}} */
-/* Credits to @einergehtnochrein (https://github.com/einergehtnochrein/ra-firmware)
- * for figuring out what each calibration field does */
+/* Calibration data. credits to @einergehtnochrein (https://github.com/einergehtnochrein/ra-firmware) for figuring out what each calibration field does {{{ */
 typedef struct {
 	uint8_t _pad0[13];
 	char sonde_serial[8];       /* Sonde serial number, ASCII */
@@ -173,3 +174,12 @@ typedef struct {
 	uint8_t _unk_end[2];
 
 } __attribute__((packed)) RS41Calibration;
+/* }}} */
+
+void rs41_descramble(RS41Frame *frame);
+bool rs41_correct(RS41Frame *frame, correct_reed_solomon *rs);
+bool rs41_crc_check(RS41Subframe *subframe);
+float rs41_temp(RS41Subframe_PTU *ptu, RS41Calibration *calib);
+float rs41_rh(RS41Subframe_PTU *ptu, RS41Calibration *calib);
+float rs41_rh_temp(RS41Subframe_PTU *ptu, RS41Calibration *calib);
+float rs41_pressure(RS41Subframe_PTU *ptu, RS41Calibration *calib);

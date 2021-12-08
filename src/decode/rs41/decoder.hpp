@@ -4,8 +4,8 @@
 #include "decode/common.hpp"
 extern "C" {
 #include <correct.h>
-}
 #include "rs41.h"
+}
 
 class RS41Decoder : public dsp::generic_block<RS41Decoder> {
 public:
@@ -27,15 +27,7 @@ private:
 	uint8_t m_calibDataBitmap[sizeof(RS41Calibration)/8/RS41_CALIB_FRAGSIZE+1];
 	bool m_calibrated;
 
-	void descramble(RS41Frame *frame);
-	bool rsCorrect(RS41Frame *frame);
-	bool crcCheck(RS41Subframe *subframe);
-	void updateCalibData(RS41Subframe_Status *status);
+	bool updateCalibData(RS41Subframe_Status *status);
 	void updateSondeData(SondeData *info, RS41Subframe *subframe);
 	void parseXDATA(SondeData *info, RS41Subframe_XDATA *xdata);
-
-	float temp(RS41Subframe_PTU *ptu);
-	float rh(RS41Subframe_PTU *ptu);
-	float rh_temp(RS41Subframe_PTU *ptu);
-	float pressure(RS41Subframe_PTU *ptu);
 };

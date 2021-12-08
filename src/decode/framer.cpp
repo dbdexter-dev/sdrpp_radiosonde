@@ -1,6 +1,8 @@
 #include <iostream>
 #include "framer.hpp"
+extern "C" {
 #include "utils.h"
+}
 
 #define CEILDIV(x, y) (((x)+((y)-1))/(y))
 
