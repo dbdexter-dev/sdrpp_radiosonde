@@ -73,7 +73,7 @@ dsp::Framer::setFrameLen(int frameLen)
 int
 dsp::Framer::run()
 {
-	int i, bitOffset, inverted, numBytes, count, outCount;
+	int i, bitOffset, numBytes, count, outCount;
 	int chunkSize;
 	uint8_t *src;
 
@@ -107,7 +107,7 @@ dsp::Framer::run()
 				}
 
 				/* Find offset with the highest correlation */
-				m_syncOffset = correlateU64(&inverted, m_rawData, m_frameLen);
+				m_syncOffset = correlateU64(&m_inverted, m_rawData, m_frameLen);
 				m_state = DEOFFSET;
 				break;
 
@@ -135,7 +135,7 @@ dsp::Framer::run()
 
 				/* Copy bits into a new frame */
 				bitcpy(m_rawData, m_rawData, m_syncOffset, 8*m_frameLen);
-				if (!inverted) {
+				if (m_inverted) {
 					for (i=0; i<m_frameLen; i++) {
 						out.writeBuf[outCount++] = 0xFF ^ m_rawData[i];
 					}
@@ -147,8 +147,8 @@ dsp::Framer::run()
 
 				/* If the offset is not byte-aligned, copy the last bits to the
 				 * beginning of the new frame */
-				bitcpy(m_rawData, m_rawData, m_syncOffset + 8*m_frameLen, 8);
-				m_dataOffset = m_syncOffset%8;
+				bitcpy(m_rawData, m_rawData, 8*m_frameLen, m_syncOffset);
+				m_dataOffset = m_syncOffset;
 				m_state = READ;
 				break;
 
@@ -171,7 +171,7 @@ dsp::Framer::correlateU64(int *inverted, uint8_t *frame, int len)
 {
 	int i, j;
 	int corr, bestCorr, bestOffset;
-	const uint64_t syncMask = (m_syncLen < 8) ? ((1ULL << (8*m_syncLen))) : ~0ULL;
+	const uint64_t syncMask = (m_syncLen < 8) ? ((1ULL << (8*m_syncLen)) - 1) : ~0ULL;
 	const uint64_t syncWord = m_syncWord & syncMask;
 	uint64_t window;
 	uint8_t tmp;
@@ -182,7 +182,7 @@ dsp::Framer::correlateU64(int *inverted, uint8_t *frame, int len)
 	}
 
 	bestOffset = 0;
-	bestCorr = inverseCorrelateU64(syncWord, window & syncMask);
+	bestCorr = inverseCorrelateU64(syncWord, window);
 
 	/* If the syncword is found at offset 0, return immediately */
 	if (bestCorr == 0) return 0;
@@ -196,7 +196,7 @@ dsp::Framer::correlateU64(int *inverted, uint8_t *frame, int len)
 		for (j=0; j<8; j++) {
 
 			/* Check correlation with syncword */
-			corr = inverseCorrelateU64(syncWord, window & syncMask);
+			corr = inverseCorrelateU64(syncWord, window);
 			if (corr < bestCorr) {
 				bestCorr = corr;
 				bestOffset = i*8+j;
@@ -212,7 +212,7 @@ dsp::Framer::correlateU64(int *inverted, uint8_t *frame, int len)
 			}
 
 			/* Advance window by one */
-			window = ((window << 1) | ((tmp >> (7-j)) & 0x1));
+			window = ((window << 1) | ((tmp >> (7-j)) & 0x1)) & syncMask;
 		}
 
 	}
