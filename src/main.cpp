@@ -400,9 +400,8 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->resampler.setLoopParams(symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
 
 	/* Update framer parameters */
-	_this->framer.stop();
-	_this->framer.init(&_this->slicer.out, syncWord, syncLen, frameLen);
-	_this->framer.start();
+	_this->framer.setSyncWord(syncWord, syncLen);
+	_this->framer.setFrameLen(frameLen);
 
 	/* Spin up the appropriate decoder */
 	_this->activeDecoder = std::get<6>(_this->supportedTypes[selection]);

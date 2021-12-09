@@ -12,8 +12,9 @@ namespace dsp {
 
 		void forward(float sample);
 		float get(unsigned phase);
-		static std::vector<float> sincCoeffs(int order, float cutoff, int numPhases);
 		int getNumPhases() { return m_numPhases; };
+
+		static std::vector<float> sincCoeffs(int order, float cutoff, int numPhases);
 
 	private:
 		float *m_mem;

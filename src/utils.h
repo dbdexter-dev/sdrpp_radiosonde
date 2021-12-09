@@ -8,10 +8,10 @@
 uint16_t crc16(uint16_t poly, uint16_t init, uint8_t *data, int len);
 
 /* Misaligned bit copy (source is misaligned) */
-void bitcpy(uint8_t *dst, uint8_t *src, int offset, int bits);
+void bitcpy(uint8_t *dst, const uint8_t *src, int offset, int bits);
 
 /* Misaligned bit copy (destination is misaligned) */
-void bitpack(uint8_t *dst, uint8_t *src, int offset, int bits);
+void bitpack(uint8_t *dst, const uint8_t *src, int offset, int bits);
 
 /**
  * Calculate pressure at a given altitude

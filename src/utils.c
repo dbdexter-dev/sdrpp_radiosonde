@@ -2,7 +2,7 @@
 #include "utils.h"
 
 void
-bitcpy(uint8_t *dst, uint8_t *src, int offset, int bits)
+bitcpy(uint8_t *dst, const uint8_t *src, int offset, int bits)
 {
 	src += offset / 8;
 	offset %= 8;
@@ -25,7 +25,7 @@ bitcpy(uint8_t *dst, uint8_t *src, int offset, int bits)
 
 
 void
-bitpack(uint8_t *dst, uint8_t *src, int offset, int bits)
+bitpack(uint8_t *dst, const uint8_t *src, int offset, int bits)
 {
 	dst += offset/8;
 	offset %= 8;

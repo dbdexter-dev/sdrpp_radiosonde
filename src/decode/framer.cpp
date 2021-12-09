@@ -7,7 +7,6 @@ extern "C" {
 #define CEILDIV(x, y) (((x)+((y)-1))/(y))
 
 static inline int inverseCorrelateU64(uint64_t x, uint64_t y);
-static void bitcpy(uint8_t *dst, uint8_t *src, size_t offset, size_t bits);
 
 dsp::Framer::Framer(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int frameLen)
 {

@@ -34,10 +34,11 @@ private:
 	dsp::GardnerResampler resampler;
 	dsp::Slicer slicer;
 	dsp::Framer framer;
+
 	RS41Decoder rs41Decoder;
 	NullDecoder nullDecoder;
 
-	const sondespec_t supportedTypes[1] = {
+	const sondespec_t supportedTypes[2] = {
 		sondespec_t("RS41", 4800.0, 1e4, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN, &rs41Decoder),
 	};
 	int selectedType = -1;
