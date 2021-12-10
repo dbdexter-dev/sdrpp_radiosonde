@@ -45,6 +45,19 @@ bitpack(uint8_t *dst, const uint8_t *src, int offset, int bits)
 		*dst &= ~((1 << (8-bits)) - 1);
 	}
 }
+
+uint64_t
+bitmerge(uint8_t *data, int nbits)
+{
+	uint64_t ret = 0;
+
+	for (; nbits >= 8; nbits-=8) {
+		ret = (ret << 8) | *data++;
+	}
+
+	return (ret << nbits) | (*data >> (7 - nbits));
+}
+
 uint16_t
 crc16(uint16_t poly, uint16_t init, uint8_t *data, int len)
 {

@@ -67,6 +67,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	framer.init(&slicer.out, syncWord, syncLen, frameLen);
 
 	rs41Decoder.init(&framer.out, sondeDataHandler, this);
+	dfm09Decoder.init(&framer.out, sondeDataHandler, this);
 	nullDecoder.init(&framer.out, sondeDataHandler, this);
 
 	fmDemod.start();
@@ -370,6 +371,7 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	if (selection > sizeof(_this->supportedTypes)/sizeof(_this->supportedTypes[0])) return;
 
 	/* Spin down the currently active decoder */
+	_this->lastData.init();
 	if (_this->activeDecoder) _this->activeDecoder->stop();
 	_this->activeDecoder = NULL;
 
