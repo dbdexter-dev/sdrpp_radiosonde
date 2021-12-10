@@ -67,6 +67,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	framer.init(&slicer.out, syncWord, syncLen, frameLen);
 
 	rs41Decoder.init(&framer.out, sondeDataHandler, this);
+	dfm09Decoder.init(&framer.out, sondeDataHandler, this);
 	nullDecoder.init(&framer.out, sondeDataHandler, this);
 
 	fmDemod.start();

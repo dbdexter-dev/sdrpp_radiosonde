@@ -6,6 +6,7 @@
 #include "decode/framer.hpp"
 #include "decode/null/decoder.hpp"
 #include "decode/rs41/decoder.hpp"
+#include "decode/dfm09/decoder.hpp"
 #include "demod/gardner.hpp"
 #include "demod/slicer.hpp"
 #include "gpx.hpp"
@@ -36,10 +37,12 @@ private:
 	dsp::Framer framer;
 
 	RS41Decoder rs41Decoder;
+	DFM09Decoder dfm09Decoder;
 	NullDecoder nullDecoder;
 
 	const sondespec_t supportedTypes[2] = {
-		sondespec_t("RS41", 4800.0, 1e4, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN, &rs41Decoder),
+		sondespec_t("RS41", RS41_BAUDRATE, 1e4, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN, &rs41Decoder),
+		sondespec_t("DFM09", DFM09_BAUDRATE, 1e4, DFM09_SYNCWORD, DFM09_SYNC_LEN, DFM09_FRAME_LEN, &dfm09Decoder),
 	};
 	int selectedType = -1;
 	dsp::generic_unnamed_block *activeDecoder;
