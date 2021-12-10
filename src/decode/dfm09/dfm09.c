@@ -68,6 +68,9 @@ dfm09_correct(DFM09Frame *frame)
 	errcount  = hamming(frame->ptu, sizeof(frame->ptu));
 	errcount += hamming(frame->gps, sizeof(frame->gps));
 
+	/* Catch multi-bit errors */
+	if (hamming(frame->ptu, sizeof(frame->ptu)) || hamming(frame->gps, sizeof(frame->gps))) return -1;
+
 	return errcount;
 }
 

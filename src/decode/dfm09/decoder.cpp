@@ -1,3 +1,5 @@
+#include <sstream>
+#include <iomanip>
 #include "decoder.hpp"
 #include "decode/gps/ecef.h"
 #include "decode/gps/time.h"
@@ -64,8 +66,15 @@ DFM09Decoder::run()
 
 	dfm09_manchester_decode(&frame, m_in->readBuf);
 	dfm09_deinterleave(&frame);
-	dfm09_correct(&frame);
+
+	if (dfm09_correct(&frame) < 0) {
+		m_in->flush();
+		return 0;
+	}
+
 	dfm09_unpack(&parsedFrame, &frame);
+	fwrite(&parsedFrame.ptu, 1, sizeof(parsedFrame.ptu), file);
+	fflush(file);
 
 	parsePTUSubframe(&parsedFrame.ptu);
 	if (parsedFrame.gps[0].type == 0x00) m_handler(&m_sondeData, m_ctx);
@@ -78,8 +87,18 @@ DFM09Decoder::run()
 }
 
 void
-DFM09Decoder::parsePTUSubframe(DFM09Subframe_PTU *gps)
+DFM09Decoder::parsePTUSubframe(DFM09Subframe_PTU *ptu)
 {
+	std::ostringstream ss;
+	switch (ptu->type) {
+		case 0x06:
+			ss << "D" << std::setw(2) << std::setfill('0') << std::hex << std::uppercase;
+			ss << (int)ptu->data[0] << (int)ptu->data[1] << (int)ptu->data[2];
+			m_sondeData.serial = ss.str();
+			break;
+		default:
+			break;
+	}
 }
 
 void
