@@ -113,7 +113,7 @@ dsp::Framer::run()
 			case DEOFFSET:
 
 				/* Try to read enough bits to undo the offset */
-				numBytes = std::min(m_frameLen - (m_dataOffset-m_syncOffset)/8, count);
+				numBytes = std::min(m_frameLen - CEILDIV(m_dataOffset-m_syncOffset, 8), count);
 				memcpy(m_rawData + CEILDIV(m_dataOffset, 8), src, numBytes);
 
 				src += numBytes;
@@ -146,8 +146,8 @@ dsp::Framer::run()
 
 				/* If the offset is not byte-aligned, copy the last bits to the
 				 * beginning of the new frame */
-				bitcpy(m_rawData, m_rawData, 8*m_frameLen, m_syncOffset);
-				m_dataOffset = m_syncOffset;
+				m_dataOffset = m_syncOffset%8;
+				bitcpy(m_rawData, m_rawData, m_syncOffset + 8*m_frameLen, m_dataOffset);
 				m_state = READ;
 				break;
 
