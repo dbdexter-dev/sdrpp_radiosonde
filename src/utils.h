@@ -13,6 +13,9 @@ void bitcpy(uint8_t *dst, const uint8_t *src, int offset, int bits);
 /* Misaligned bit copy (destination is misaligned) */
 void bitpack(uint8_t *dst, const uint8_t *src, int offset, int bits);
 
+/* Merge bits into a single uint */
+uint64_t bitmerge(uint8_t *data, int nbits);
+
 /**
  * Calculate pressure at a given altitude
  *
@@ -47,3 +50,4 @@ float sat_mixing_ratio(float temp, float p);
  * @return saturation pressure (hPa)
  */
 float wv_sat_pressure(float temp);
+

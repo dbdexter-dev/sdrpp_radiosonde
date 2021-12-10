@@ -17,8 +17,14 @@ public:
 	int run() override;
 
 private:
+	void parsePTUSubframe(DFM09Subframe_PTU *gps);
+	void parseGPSSubframe(DFM09Subframe_GPS *gps);
+
 	void *m_ctx;
 	void (*m_handler)(SondeData *data, void *ctx);
 	dsp::stream<uint8_t> *m_in;
+	struct tm m_gpsTime;
+	int m_lastGPS;
+
 	SondeData m_sondeData;
 };
