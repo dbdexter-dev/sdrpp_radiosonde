@@ -10,8 +10,6 @@ extern "C" {
 
 static time_t my_timegm(struct tm *tm);
 
-static FILE *file;
-
 DFM09Decoder::DFM09Decoder(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx)
 {
 	init(in, handler, ctx);
@@ -28,8 +26,6 @@ DFM09Decoder::~DFM09Decoder()
 void
 DFM09Decoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx)
 {
-	file = fopen("/tmp/dfm09.data", "wb");
-
 	m_in = in;
 	m_ctx = ctx;
 	m_handler = handler;
@@ -73,8 +69,6 @@ DFM09Decoder::run()
 	}
 
 	dfm09_unpack(&parsedFrame, &frame);
-	fwrite(&parsedFrame.ptu, 1, sizeof(parsedFrame.ptu), file);
-	fflush(file);
 
 	parsePTUSubframe(&parsedFrame.ptu);
 	if (parsedFrame.gps[0].type == 0x00) m_handler(&m_sondeData, m_ctx);
