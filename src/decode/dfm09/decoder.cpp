@@ -124,6 +124,7 @@ DFM09Decoder::parseGPSSubframe(DFM09Subframe_GPS *gps)
 		case 0x04:
 			m_sondeData.alt = (int32_t)bitmerge(gps->data, 32) / 1e2;
 			m_sondeData.climb = (int16_t)bitmerge(gps->data+4, 16) / 1e2;
+			m_sondeData.pressure = altitude_to_pressure(m_sondeData.alt);
 			break;
 		case 0x05:
 			/* Unknown */
