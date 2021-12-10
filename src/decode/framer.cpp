@@ -1,4 +1,3 @@
-#include <iostream>
 #include "framer.hpp"
 extern "C" {
 #include "utils.h"
@@ -100,7 +99,7 @@ dsp::Framer::run()
 					return outCount;
 				}
 
-				/* Repack bits if there was an initial offset */
+				/* Repack bits if there was a byte-fractional offset */
 				if (m_dataOffset % 8) {
 					bitpack(m_rawData, m_rawData+1, m_dataOffset%8, m_frameLen*8);
 				}
@@ -113,7 +112,7 @@ dsp::Framer::run()
 			case DEOFFSET:
 
 				/* Try to read enough bits to undo the offset */
-				numBytes = std::min(m_frameLen - CEILDIV(m_dataOffset-m_syncOffset, 8), count);
+				numBytes = std::min(m_frameLen - CEILDIV(m_dataOffset-m_syncOffset, 8) + 1, count);
 				memcpy(m_rawData + CEILDIV(m_dataOffset, 8), src, numBytes);
 
 				src += numBytes;
@@ -127,27 +126,19 @@ dsp::Framer::run()
 					return outCount;
 				}
 
-				/* Repack bits if there was an initial offset */
-				if (m_dataOffset % 8) {
-					bitpack(m_rawData + m_frameLen, m_rawData + m_frameLen + 1, m_dataOffset%8, m_syncOffset);
-				}
-
 				/* Copy bits into a new frame */
-				bitcpy(m_rawData, m_rawData, m_syncOffset, 8*m_frameLen);
+				bitcpy(out.writeBuf + outCount, m_rawData, m_syncOffset, 8*m_frameLen);
+				outCount += m_frameLen;
 				if (m_inverted) {
 					for (i=0; i<m_frameLen; i++) {
-						out.writeBuf[outCount++] = 0xFF ^ m_rawData[i];
-					}
-				} else {
-					for (i=0; i<m_frameLen; i++) {
-						out.writeBuf[outCount++] = m_rawData[i];
+						out.writeBuf[i] ^= 0xFF;
 					}
 				}
 
 				/* If the offset is not byte-aligned, copy the last bits to the
 				 * beginning of the new frame */
-				m_dataOffset = m_syncOffset%8;
-				bitcpy(m_rawData, m_rawData, m_syncOffset + 8*m_frameLen, m_dataOffset);
+				bitcpy(m_rawData, m_rawData + m_frameLen, m_syncOffset, m_dataOffset - 8*m_frameLen - m_syncOffset);
+				m_dataOffset -= 8*m_frameLen + m_syncOffset;
 				m_state = READ;
 				break;
 
