@@ -7,13 +7,13 @@
 /* Physical parameters */
 #define RS41_BAUDRATE 4800
 
-/* Frame parameters */
+/* Frame parameters, in bits */
 #define RS41_SYNCWORD 0x086d53884469481f
-#define RS41_SYNC_LEN 8
-#define RS41_RS_LEN 48
-#define RS41_DATA_LEN 263
-#define RS41_XDATA_LEN 198
-#define RS41_FRAME_LEN (RS41_SYNC_LEN + RS41_RS_LEN + 1 + RS41_DATA_LEN + RS41_XDATA_LEN)
+#define RS41_SYNC_LEN 64
+#define RS41_RS_LEN 384
+#define RS41_DATA_LEN 2104
+#define RS41_XDATA_LEN 1584
+#define RS41_FRAME_LEN (RS41_SYNC_LEN + RS41_RS_LEN + 8 + RS41_DATA_LEN + RS41_XDATA_LEN)
 
 #define RS41_FLAG_EXTENDED 0xF0
 #define RS41_PRN_PERIOD 64
@@ -49,10 +49,10 @@
 
 
 typedef struct {
-	uint8_t syncword[RS41_SYNC_LEN];
-	uint8_t rs_checksum[RS41_RS_LEN];
+	uint8_t syncword[RS41_SYNC_LEN/8];
+	uint8_t rs_checksum[RS41_RS_LEN/8];
 	uint8_t extended_flag;
-	uint8_t data[RS41_DATA_LEN + RS41_XDATA_LEN];
+	uint8_t data[RS41_DATA_LEN/8 + RS41_XDATA_LEN/8];
 } __attribute__((packed)) RS41Frame;
 
 typedef struct {

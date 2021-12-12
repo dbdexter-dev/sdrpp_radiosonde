@@ -16,7 +16,7 @@ dfm09_manchester_decode(DFM09Frame *dst, const uint8_t *src)
 
 	out = 0;
 	out_count = 0;
-	for (i=0; i<8*DFM09_FRAME_LEN; i+=2) {
+	for (i=0; i<DFM09_FRAME_LEN; i+=2) {
 		bitcpy(&inBits, src, i, 2);
 		out = (out << 1) | (inBits & 0x40 ? 1 : 0);
 		out_count++;

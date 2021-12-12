@@ -1,6 +1,8 @@
 #include <math.h>
 #include "utils.h"
 
+static inline int count_ones(uint8_t symbol);
+
 void
 bitcpy(uint8_t *dst, const uint8_t *src, int offset, int bits)
 {
@@ -56,6 +58,33 @@ bitmerge(uint8_t *data, int nbits)
 	}
 
 	return (ret << nbits) | (*data >> (7 - nbits));
+}
+
+
+int
+hamming_memcmp(const uint8_t *x, const uint8_t *y, int len)
+{
+	int ret;
+
+	ret = 0;
+	for (int i=0; i<len; i++) {
+		ret += count_ones(x[i] ^ y[i]);
+	}
+
+	return ret;
+}
+
+static inline int
+count_ones(uint8_t symbol)
+{
+	int corr;
+
+	/* From bit twiddling hacks */
+	for (corr = 0; symbol; corr++) {
+		symbol &= symbol-1;
+	}
+
+	return corr;
 }
 
 uint16_t

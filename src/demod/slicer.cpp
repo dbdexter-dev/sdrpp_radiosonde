@@ -48,18 +48,9 @@ dsp::Slicer::run()
 	count = m_in->read();
 	if (count < 0) return -1;
 
-
 	outCount = 0;
 	for (i=0; i<count; i++) {
-		m_tmp = (m_tmp << 1) | (m_in->readBuf[i] > 0 ? 1 : 0);
-		m_offset++;
-
-		if (m_offset >= 8) {
-			out.writeBuf[outCount] = m_tmp;
-			outCount++;
-			m_offset = 0;
-			m_tmp = 0;
-		}
+		out.writeBuf[outCount++] = (m_in->readBuf[i] > 0 ? 1 : 0);
 	}
 
 	m_in->flush();

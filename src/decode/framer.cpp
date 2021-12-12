@@ -5,8 +5,6 @@ extern "C" {
 
 #define CEILDIV(x, y) (((x)+((y)-1))/(y))
 
-static inline int inverseCorrelateU64(uint64_t x, uint64_t y);
-
 dsp::Framer::Framer(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int frameLen)
 {
 	init(in, syncWord, syncLen, frameLen);
@@ -15,6 +13,10 @@ dsp::Framer::Framer(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int fra
 dsp::Framer::~Framer()
 {
 	if (!generic_block<Framer>::_block_init) return;
+
+	delete[] m_syncWord;
+	delete[] m_rawData;
+
 	generic_block<Framer>::stop();
 	generic_block<Framer>::unregisterInput(m_in);
 	generic_block<Framer>::unregisterOutput(&out);
@@ -25,8 +27,12 @@ void
 dsp::Framer::init(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int frameLen)
 {
 	m_in = in;
-	m_syncWord = syncWord;
+	m_syncWord = new uint8_t[syncLen];
+	for (int i=0; i<syncLen; i++) {
+		m_syncWord[i] = (syncWord >> (syncLen - i - 1)) & 0x01;
+	}
 	m_syncLen = syncLen;
+
 	m_frameLen = frameLen;
 	m_rawData = new uint8_t[2*frameLen];
 	m_state = READ;
@@ -54,7 +60,11 @@ dsp::Framer::setInput(stream<uint8_t> *in)
 void
 dsp::Framer::setSyncWord(uint64_t syncWord, int syncLen)
 {
-	m_syncWord = syncWord;
+	delete[] m_syncWord;
+	m_syncWord = new uint8_t[syncLen];
+	for (int i=0; i<syncLen; i++) {
+		m_syncWord[i] = (syncWord >> (syncLen - i - 1)) & 0x01;
+	}
 	m_syncLen = syncLen;
 }
 
@@ -62,7 +72,7 @@ void
 dsp::Framer::setFrameLen(int frameLen)
 {
 	delete[] m_rawData;
-	m_rawData = new uint8_t[2*frameLen];
+	m_rawData = new uint8_t[2 * frameLen];
 	m_frameLen = frameLen;
 	m_dataOffset = 0;
 	m_state = READ;
@@ -73,8 +83,10 @@ dsp::Framer::run()
 {
 	int i, bitOffset, numBytes, count, outCount;
 	int chunkSize;
+	std::pair<int, int> bestCorr;
 	uint8_t *src;
 
+	assert(generic_block<Framer>::_block_init);
 	if ((count = m_in->read()) < 0) return -1;
 
 	src = m_in->readBuf;
@@ -82,63 +94,54 @@ dsp::Framer::run()
 	outCount = 0;
 	while (count > 0) {
 		switch (m_state) {
-
 			case READ:
 				/* Try to read a frame worth of bits */
-				numBytes = std::min(m_frameLen - m_dataOffset/8, count);
-				memcpy(m_rawData + CEILDIV(m_dataOffset, 8), src, numBytes);
+				numBytes = std::min(m_frameLen - m_dataOffset, count);
+				memcpy(m_rawData + m_dataOffset, src, numBytes);
 
 				count -= numBytes;
-				m_dataOffset += 8*numBytes;
+				m_dataOffset += numBytes;
 				src += numBytes;
 
 				/* If an entire frame is not available, return */
 				if (count <= 0) {
-					m_in->flush();
-					if (outCount > 0 && !out.swap(outCount)) return -1;
-					return outCount;
-				}
-
-				/* Repack bits if there was a byte-fractional offset */
-				if (m_dataOffset % 8) {
-					bitpack(m_rawData, m_rawData+1, m_dataOffset%8, m_frameLen*8);
+					break;
 				}
 
 				/* Find offset with the highest correlation */
-				m_syncOffset = correlateU64(&m_inverted, m_rawData, m_frameLen);
+				bestCorr = correlate(m_rawData);
+				m_inverted = std::get<1>(bestCorr);
+				m_dataOffset = m_frameLen - std::get<0>(bestCorr);
+				memcpy(m_rawData, m_rawData + std::get<0>(bestCorr), m_dataOffset);
 				m_state = DEOFFSET;
 				break;
 
 			case DEOFFSET:
 
 				/* Try to read enough bits to undo the offset */
-				numBytes = std::min(m_frameLen - CEILDIV(m_dataOffset-m_syncOffset, 8) + 1, count);
-				memcpy(m_rawData + CEILDIV(m_dataOffset, 8), src, numBytes);
+				numBytes = std::min(m_frameLen - m_dataOffset, count);
+				memcpy(m_rawData + m_dataOffset, src, numBytes);
 
 				src += numBytes;
 				count -= numBytes;
-				m_dataOffset += 8*numBytes;
+				m_dataOffset += numBytes;
 
 				/* If an entire frame is not available, return */
 				if (count <= 0) {
-					m_in->flush();
-					if (outCount > 0 && !out.swap(outCount)) return -1;
-					return outCount;
+					break;
 				}
 
 				/* Copy bits into a new frame */
-				bitcpy(out.writeBuf + outCount, m_rawData, m_syncOffset, 8*m_frameLen);
+				memcpy(out.writeBuf + outCount, m_rawData, m_frameLen);
 				outCount += m_frameLen;
 				if (m_inverted) {
 					for (i=0; i<m_frameLen; i++) {
-						out.writeBuf[i] ^= 0xFF;
+						out.writeBuf[i] ^= 0x01;
 					}
 				}
 
-				/* If the offset is not byte-aligned, copy the last bits to the
-				 * beginning of the new frame */
-				bitcpy(m_rawData, m_rawData + m_frameLen, m_syncOffset, m_dataOffset - 8*m_frameLen - m_syncOffset);
-				m_dataOffset -= 8*m_frameLen + m_syncOffset;
+				/* Get ready for the next read */
+				m_dataOffset = 0;
 				m_state = READ;
 				break;
 
@@ -156,75 +159,39 @@ dsp::Framer::run()
 
 
 /* Private methods {{{ */
-int
-dsp::Framer::correlateU64(int *inverted, uint8_t *frame, int len)
+std::pair<int, int>
+dsp::Framer::correlate(uint8_t *frame)
 {
-	int i, j;
+	int inverted;
 	int corr, bestCorr, bestOffset;
-	const uint64_t syncMask = (m_syncLen < 8) ? ((1ULL << (8*m_syncLen)) - 1) : ~0ULL;
-	const uint64_t syncWord = m_syncWord & syncMask;
-	uint64_t window;
 	uint8_t tmp;
 
-	window = 0;
-	for (i=0; i<m_syncLen; i++) {
-		window = window << 8 | *frame++;
-	}
-
 	bestOffset = 0;
-	bestCorr = inverseCorrelateU64(syncWord, window);
+	bestCorr = hamming_memcmp(frame, m_syncWord, m_syncLen);
 
 	/* If the syncword is found at offset 0, return immediately */
-	if (bestCorr == 0) return 0;
-
+	if (bestCorr == 0) return std::pair<int, int>(0, 0);
 
 	/* Search for the position with the highest correlation */
-	for (i=0; i<len - m_syncLen; i++) {
-		tmp = *frame++;
+	for (int i=0; i < m_frameLen - m_syncLen; i++) {
 
-		/* For each bit in the byte */
-		for (j=0; j<8; j++) {
-
-			/* Check correlation with syncword */
-			corr = inverseCorrelateU64(syncWord, window);
-			if (corr < bestCorr) {
-				bestCorr = corr;
-				bestOffset = i*8+j;
-				*inverted = 0;
-			}
-
-			/* Check correlation with inverted syncword */
-			corr = m_syncLen*8 - corr;
-			if (corr < bestCorr) {
-				bestCorr = corr;
-				bestOffset = i*8+j;
-				*inverted = 1;
-			}
-
-			/* Advance window by one */
-			window = ((window << 1) | ((tmp >> (7-j)) & 0x1)) & syncMask;
+		/* Check correlation with syncword */
+		corr = hamming_memcmp(frame + i, m_syncWord, m_syncLen);
+		if (corr < bestCorr) {
+			bestCorr = corr;
+			bestOffset = i;
+			inverted = 0;
 		}
 
+		/* Check correlation with inverted syncword */
+		corr = m_syncLen - corr;
+		if (corr < bestCorr) {
+			bestCorr = corr;
+			bestOffset = i;
+			inverted = 1;
+		}
 	}
 
-	return bestOffset;
+	return std::pair<int, int>(bestOffset, inverted);
 }
-
-/**
- * Count the number of bits that differ between two uint64's
- */
-static inline int
-inverseCorrelateU64(uint64_t x, uint64_t y)
-{
-	int corr;
-	uint64_t v = x ^ y;
-
-	/* From bit twiddling hacks */
-	for (corr = 0; v; corr++) {
-		v &= v-1;
-	}
-
-	return corr;
-}
-
 /* }}} */

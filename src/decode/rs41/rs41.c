@@ -42,7 +42,7 @@ rs41_correct(RS41Frame *frame, correct_reed_solomon *rs)
 	uint8_t rsBlock[RS41_REEDSOLOMON_N];
 
 	if (frame->extended_flag != RS41_FLAG_EXTENDED) {
-		chunk_len = (RS41_DATA_LEN + 1) / RS41_REEDSOLOMON_INTERLEAVING;
+		chunk_len = (RS41_DATA_LEN/8 + 1) / RS41_REEDSOLOMON_INTERLEAVING;
 		memset(rsBlock, 0, RS41_REEDSOLOMON_N);
 	} else {
 		chunk_len = RS41_REEDSOLOMON_K;

@@ -18,7 +18,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 5, 0,
+    /* Version:         */ 0, 5, 1,
     /* Max instances    */ -1
 };
 
@@ -65,15 +65,16 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	resampler.init(&fmDemod.out, symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
 	slicer.init(&resampler.out);
 	framer.init(&slicer.out, syncWord, syncLen, frameLen);
+	packer.init(&framer.out);
 
-	rs41Decoder.init(&framer.out, sondeDataHandler, this);
-	dfm09Decoder.init(&framer.out, sondeDataHandler, this);
-	nullDecoder.init(&framer.out, sondeDataHandler, this);
+	rs41Decoder.init(&packer.out, sondeDataHandler, this);
+	dfm09Decoder.init(&packer.out, sondeDataHandler, this);
 
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
 	framer.start();
+	packer.start();
 	onTypeSelected(this, typeToSelect);
 	enabled = true;
 

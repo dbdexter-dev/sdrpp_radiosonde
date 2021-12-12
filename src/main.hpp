@@ -2,9 +2,9 @@
 
 #include <module.h>
 #include <dsp/demodulator.h>
+#include <dsp/deframing.h>
 #include "decode/common.hpp"
 #include "decode/framer.hpp"
-#include "decode/null/decoder.hpp"
 #include "decode/rs41/decoder.hpp"
 #include "decode/dfm09/decoder.hpp"
 #include "demod/gardner.hpp"
@@ -35,10 +35,10 @@ private:
 	dsp::GardnerResampler resampler;
 	dsp::Slicer slicer;
 	dsp::Framer framer;
+	dsp::BitPacker packer;
 
 	RS41Decoder rs41Decoder;
 	DFM09Decoder dfm09Decoder;
-	NullDecoder nullDecoder;
 
 	const sondespec_t supportedTypes[2] = {
 		sondespec_t("RS41", RS41_BAUDRATE, 1e4, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN, &rs41Decoder),

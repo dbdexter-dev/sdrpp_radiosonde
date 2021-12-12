@@ -7,8 +7,8 @@
 
 /* Frame parameters */
 #define DFM09_SYNCWORD 0x9a995a55
-#define DFM09_SYNC_LEN 4
-#define DFM09_FRAME_LEN 70
+#define DFM09_SYNC_LEN 32
+#define DFM09_FRAME_LEN 560
 
 #define DFM09_INTERLEAVING_PTU 7
 #define DFM09_INTERLEAVING_GPS 13

@@ -144,7 +144,7 @@ RS41Decoder::run()
 		rs41_descramble(frame);
 		if (m_rs) rs41_correct(frame, m_rs);
 
-		bytesLeft = RS41_DATA_LEN + (frame->extended_flag == RS41_FLAG_EXTENDED ? RS41_XDATA_LEN : 0);
+		bytesLeft = RS41_DATA_LEN/8 + (frame->extended_flag == RS41_FLAG_EXTENDED ? RS41_XDATA_LEN/8 : 0);
 		if (frame->extended_flag != RS41_FLAG_EXTENDED) m_sondeData.auxData = "";
 
 		offset = 0;

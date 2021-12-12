@@ -16,6 +16,9 @@ void bitpack(uint8_t *dst, const uint8_t *src, int offset, int bits);
 /* Merge bits into a single uint */
 uint64_t bitmerge(uint8_t *data, int nbits);
 
+/* Compare the values in two pointers, and return the hamming distance between them */
+int hamming_memcmp(const uint8_t *x, const uint8_t *y, int len);
+
 /**
  * Calculate pressure at a given altitude
  *
