@@ -10,7 +10,14 @@ namespace dsp {
 		PolyphaseFilter(int order, float cutoff, unsigned numPhases);
 		~PolyphaseFilter();
 
+		/**
+		 * Feed a sample through the filter
+		 */
 		void forward(float sample);
+
+		/**
+		 * Compute the output of the given phase
+		 */
 		float get(unsigned phase);
 		int getNumPhases() { return m_numPhases; };
 

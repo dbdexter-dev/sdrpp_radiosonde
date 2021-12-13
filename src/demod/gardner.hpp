@@ -3,13 +3,31 @@
 #include <dsp/block.h>
 #include "polyphase.hpp"
 
+/**
+ * Symbol timing recovery block.
+ * Interpolates the input stream to increase the number of samples per symbol,
+ * then applies the Gardner timing recovery algorithm to choose the one the best
+ * aligns with the symbol clock.
+ */
+
 namespace dsp {
 	class GardnerResampler : public generic_block<GardnerResampler> {
 	public:
-		GardnerResampler() {};
-		GardnerResampler(stream<float> *in, float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq = 0.125);
+		GardnerResampler() {}
+		GardnerResampler(stream<float> *in, float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq = 0.125) { init(in, symFreq, damp, bw, maxFreqDelta, targetSymFreq); }
 		~GardnerResampler();
 
+		/**
+		 * Initialize the timing recovery algorithm with the given parameters
+		 *
+		 * @param in input stream
+		 * @param symFreq symbols per sample in the input stream
+		 * @param damp feedback control loop damping
+		 * @param bw feedback control loop bandwidth
+		 * @param maxFreqDelta maximum allowed deviation from symFreq
+		 * @param targetSymFreq maximum number of symbols per sample in the
+		 *        internal interpolated stream
+		 */
 		void init(stream<float> *in, float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq = 0.125);
 		void setInput(stream<float> *in);
 		void setLoopParams(float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq = 0.125);

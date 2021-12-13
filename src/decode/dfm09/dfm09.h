@@ -5,11 +5,12 @@
 /* Physical parameters */
 #define DFM09_BAUDRATE 2500.0
 
-/* Frame parameters */
+/* Frame parameters, in bits */
 #define DFM09_SYNCWORD 0x9a995a55
 #define DFM09_SYNC_LEN 32
 #define DFM09_FRAME_LEN 560
 
+/* Interleaving parameters */
 #define DFM09_INTERLEAVING_PTU 7
 #define DFM09_INTERLEAVING_GPS 13
 

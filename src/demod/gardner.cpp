@@ -7,14 +7,10 @@
 #define BIAS_POLE 0.01
 #define AGC_POLE 0.001
 
-dsp::GardnerResampler::GardnerResampler(stream<float> *in, float symFreq, float damp, float bw, float maxFreqDelta, float targetSymFreq)
-{
-	init(in, symFreq, damp, bw, maxFreqDelta, targetSymFreq);
-}
-
 dsp::GardnerResampler::~GardnerResampler()
 {
 	if (!generic_block<GardnerResampler>::_block_init) return;
+
 	generic_block<GardnerResampler>::stop();
 	generic_block<GardnerResampler>::unregisterInput(m_in);
 	generic_block<GardnerResampler>::unregisterOutput(&out);

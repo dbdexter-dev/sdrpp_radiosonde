@@ -12,6 +12,7 @@
 #include "gpx.hpp"
 #include "ptu.hpp"
 
+/* Display name, symbol rate, bandwidth, syncword, syncword length (bits), frame length (bits), decoder */
 typedef std::tuple<const char*, float, float, uint64_t, int, int, dsp::generic_unnamed_block*> sondespec_t;
 
 class RadiosondeDecoderModule : public ModuleManager::Instance {

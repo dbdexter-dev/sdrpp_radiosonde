@@ -34,7 +34,7 @@ dsp::Framer::init(stream<uint8_t> *in, uint64_t syncWord, int syncLen, int frame
 	m_syncLen = syncLen;
 
 	m_frameLen = frameLen;
-	m_rawData = new uint8_t[2*frameLen];
+	m_rawData = new uint8_t[frameLen];
 	m_state = READ;
 	m_dataOffset = 0;
 
@@ -60,7 +60,7 @@ dsp::Framer::setInput(stream<uint8_t> *in)
 void
 dsp::Framer::setSyncWord(uint64_t syncWord, int syncLen)
 {
-	delete[] m_syncWord;
+	if (m_syncWord) delete[] m_syncWord;
 	m_syncWord = new uint8_t[syncLen];
 	for (int i=0; i<syncLen; i++) {
 		m_syncWord[i] = (syncWord >> (syncLen - i - 1)) & 0x01;
@@ -71,8 +71,8 @@ dsp::Framer::setSyncWord(uint64_t syncWord, int syncLen)
 void
 dsp::Framer::setFrameLen(int frameLen)
 {
-	delete[] m_rawData;
-	m_rawData = new uint8_t[2 * frameLen];
+	if (m_rawData) delete[] m_rawData;
+	m_rawData = new uint8_t[frameLen];
 	m_frameLen = frameLen;
 	m_dataOffset = 0;
 	m_state = READ;
@@ -163,30 +163,30 @@ std::pair<int, int>
 dsp::Framer::correlate(uint8_t *frame)
 {
 	int inverted;
-	int corr, bestCorr, bestOffset;
+	int dist, bestDist, bestOffset;
 	uint8_t tmp;
 
 	bestOffset = 0;
-	bestCorr = hamming_memcmp(frame, m_syncWord, m_syncLen);
+	bestDist = hamming_memcmp(frame, m_syncWord, m_syncLen);
 
 	/* If the syncword is found at offset 0, return immediately */
-	if (bestCorr == 0) return std::pair<int, int>(0, 0);
+	if (bestDist == 0) return std::pair<int, int>(0, 0);
 
 	/* Search for the position with the highest correlation */
 	for (int i=0; i < m_frameLen - m_syncLen; i++) {
 
 		/* Check correlation with syncword */
-		corr = hamming_memcmp(frame + i, m_syncWord, m_syncLen);
-		if (corr < bestCorr) {
-			bestCorr = corr;
+		dist = hamming_memcmp(frame + i, m_syncWord, m_syncLen);
+		if (dist < bestDist) {
+			bestDist = dist;
 			bestOffset = i;
 			inverted = 0;
 		}
 
 		/* Check correlation with inverted syncword */
-		corr = m_syncLen - corr;
-		if (corr < bestCorr) {
-			bestCorr = corr;
+		dist = m_syncLen - dist;
+		if (dist < bestDist) {
+			bestDist = dist;
 			bestOffset = i;
 			inverted = 1;
 		}
