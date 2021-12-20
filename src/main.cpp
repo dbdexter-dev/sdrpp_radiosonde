@@ -12,13 +12,13 @@
 
 #define SNAP_INTERVAL 5000
 #define GARDNER_DAMP 0.707
-#define UNCAL_COLOR IM_COL32(255,255,0,255)
+#define UNCAL_COLOR IM_COL32(255,234,0,255)
 
 SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 5, 1,
+    /* Version:         */ 0, 5, 2,
     /* Max instances    */ -1
 };
 
@@ -251,6 +251,9 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1f°C", _this->lastData.temp);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Calibration data not yet available.");
+			}
 		}
 
 		ImGui::TableNextRow();
@@ -261,6 +264,9 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1f%%", _this->lastData.rh);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Calibration data not yet available.");
+			}
 		}
 
 		ImGui::TableNextRow();
@@ -271,6 +277,9 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1f°C", _this->lastData.dewpt);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Calibration data not yet available.");
+			}
 		}
 
 		ImGui::TableNextRow();
