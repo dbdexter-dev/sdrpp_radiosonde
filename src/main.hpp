@@ -29,6 +29,7 @@ private:
 	std::string name;
 	bool enabled = true;
 	bool gpxOutput = false, ptuOutput = false;
+	bool uploadPopupOpen;
 	char gpxFilename[2048];
 	char ptuFilename[2048];
 	VFOManager::VFO *vfo;
@@ -53,6 +54,7 @@ private:
 	PTUWriter ptuWriter;
 
 	static void menuHandler(void *ctx);
+	static void drawUploadPopup(void *ctx);
 	static void sondeDataHandler(SondeData *data, void *ctx);
 	static void onTypeSelected(void *ctx, int selection);
 	static void onGPXOutputChanged(void *ctx);

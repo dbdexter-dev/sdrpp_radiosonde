@@ -227,6 +227,7 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			break;
 		case RS41_SFTYPE_XDATA:
 			xdata = (RS41Subframe_XDATA*)subframe;
+			info->rawAuxData = std::string(xdata->ascii_data, xdata->len);
 			info->auxData = decodeXDATA(info, xdata->ascii_data, xdata->len);
 			break;
 		case RS41_SFTYPE_GPSRAW:

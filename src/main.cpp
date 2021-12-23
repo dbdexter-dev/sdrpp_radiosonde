@@ -27,9 +27,6 @@ ConfigManager config;
 
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
-	float symRate, bw;
-	uint64_t syncWord;
-	int syncLen, frameLen;
 	bool created = false;
 	int typeToSelect;
 	std::string gpxPath, ptuPath;
@@ -37,6 +34,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	this->name = name;
 	selectedType = -1;
 	activeDecoder = NULL;
+	uploadPopupOpen = false;
 
 	config.acquire();
 	if (!config.conf.contains(name)) {
@@ -50,11 +48,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	typeToSelect = config.conf[name]["sondeType"];
 	config.release(created);
 
-	symRate = std::get<1>(supportedTypes[typeToSelect]);
-	bw = std::get<2>(supportedTypes[typeToSelect]);
-	syncWord = std::get<3>(supportedTypes[typeToSelect]);
-	syncLen = std::get<4>(supportedTypes[typeToSelect]);
-	frameLen = std::get<5>(supportedTypes[typeToSelect]);
+	auto& [_un, symRate, bw, syncWord, syncLen, frameLen, _un2] = supportedTypes[typeToSelect];
 
 	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
 	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
@@ -137,7 +131,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	const float width = ImGui::GetContentRegionAvailWidth();
 	char time[64];
-	bool gpxStatusChanged, ptuStatusChanged, gpxStatus, ptuStatus;
+	bool gpxStatusChanged, ptuStatusChanged;
 
 	if (!_this->enabled) style::beginDisabled();
 
@@ -290,6 +284,9 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1fhPa", _this->lastData.pressure);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Calibration data not yet available.");
+			}
 		}
 
 		ImGui::TableNextRow();
@@ -297,7 +294,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Aux. data");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			ImGui::Text(_this->lastData.auxData.c_str());
+			ImGui::Text("%s", _this->lastData.auxData.c_str());
 		}
 
 		ImGui::EndTable();
@@ -319,8 +316,26 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	                                     ImGuiInputTextFlags_EnterReturnsTrue);
 	if (ptuStatusChanged) onPTUOutputChanged(ctx);
 	/* }}} */
+	/* Upload configuration {{{ */
+	if (ImGui::Button(CONCAT("Upload telemetry...##_radiosonde_upload_button_", _this->name), ImVec2(width, 0))) {
+		_this->uploadPopupOpen = true;
+	}
+	/* }}} */
 
 	if (!_this->enabled) style::endDisabled();
+	if (_this->uploadPopupOpen) drawUploadPopup(ctx);
+}
+
+void
+RadiosondeDecoderModule::drawUploadPopup(void *ctx)
+{
+	auto _this = (RadiosondeDecoderModule*)ctx;
+	auto id = "Upload telemetry to external service##_radiosonde_upload_" + _this->name;
+
+	ImGui::OpenPopup(id.c_str());
+	if (ImGui::BeginPopupModal(id.c_str(), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+		ImGui::EndPopup();
+	}
 }
 
 void
@@ -372,9 +387,6 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 void
 RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 {
-	float symRate, bw;
-	uint64_t syncWord;
-	int syncLen, frameLen;
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 
 	/* Ensure that the selection is within bounds */
@@ -395,11 +407,7 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	config.release(true);
 
 	/* Retrieve new selection parameters */
-	symRate = std::get<1>(_this->supportedTypes[selection]);
-	bw = std::get<2>(_this->supportedTypes[selection]);
-	syncWord = std::get<3>(_this->supportedTypes[selection]);
-	syncLen = std::get<4>(_this->supportedTypes[selection]);
-	frameLen = std::get<5>(_this->supportedTypes[selection]);
+	auto& [_un, symRate, bw, syncWord, syncLen, frameLen, _un2] = _this->supportedTypes[selection];
 
 	/* Update VFO */
 	_this->fmDemod.stop();

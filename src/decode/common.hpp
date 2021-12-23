@@ -24,4 +24,5 @@ public:
 	float dewpt, pressure;      /* Dew point (degrees C), pressure (hPa) */
 	bool calibrated;            /* Whether all the calibration data has been received */
 	std::string auxData;        /* Auxiliary freeform data */
+	std::string rawAuxData;     /* Auxiliary data as a hex string */
 };
