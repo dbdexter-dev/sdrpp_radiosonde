@@ -104,11 +104,11 @@ typedef struct {
 	uint8_t pressure_ref1[3];
 	uint8_t pressure_ref2[3];
 
-	uint8_t _zero[3];
+	uint8_t _zero[2];
 
 	int16_t pressure_temp;
 
-	uint8_t _zero2[3];
+	uint8_t _zero2[2];
 } __attribute__((packed)) RS41Subframe_PTU;
 
 typedef struct {
