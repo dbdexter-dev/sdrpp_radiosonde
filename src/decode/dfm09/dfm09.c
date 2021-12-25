@@ -120,6 +120,8 @@ hamming(uint8_t *data, int len)
 			errpos += (1 << j) * parity(data[i] & hamming_bitmasks[j]);
 		}
 
+		if (errpos > 7) return -1;
+
 		if (errpos) {
 			errcount++;
 			data[i] ^= 1 << (8 - errpos);

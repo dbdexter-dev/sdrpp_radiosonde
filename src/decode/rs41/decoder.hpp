@@ -15,6 +15,7 @@ public:
 
 	void init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx);
 	void setInput(dsp::stream<uint8_t> *in);
+	void doStop() override;
 	int run() override;
 
 private:

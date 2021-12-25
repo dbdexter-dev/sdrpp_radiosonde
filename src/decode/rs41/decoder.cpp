@@ -122,6 +122,14 @@ RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 	generic_block<RS41Decoder>::tempStart();
 }
 
+void
+RS41Decoder::doStop()
+{
+	m_sondeData.init();
+	generic_block<RS41Decoder>::doStop();
+}
+
+
 int
 RS41Decoder::run()
 {

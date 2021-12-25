@@ -14,17 +14,22 @@ public:
 
 	void init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, void *ctx), void *ctx);
 	void setInput(dsp::stream<uint8_t> *in);
+	void doStop() override;
 	int run() override;
 
 private:
-	void parsePTUSubframe(DFM09Subframe_PTU *gps);
-	void parseGPSSubframe(DFM09Subframe_GPS *gps);
-
 	void *m_ctx;
 	void (*m_handler)(SondeData *data, void *ctx);
 	dsp::stream<uint8_t> *m_in;
 	struct tm m_gpsTime;
-	int m_lastGPS;
+	int m_nullCh;
+	int m_serialBitmask;
+	uint64_t m_serial;
+	bool m_serialValid;
 
 	SondeData m_sondeData;
+
+	void parsePTUSubframe(DFM09Subframe_PTU *gps);
+	void parseGPSSubframe(DFM09Subframe_GPS *gps);
+
 };
