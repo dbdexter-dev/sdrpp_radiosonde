@@ -8,6 +8,8 @@
 #include <options.h>
 #include "main.hpp"
 
+#include "net/sondehub.hpp"
+
 #define CONCAT(a, b)    ((std::string(a) + b).c_str())
 
 #define SNAP_INTERVAL 5000
@@ -64,6 +66,8 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	rs41Decoder.init(&packer.out, sondeDataHandler, this);
 	dfm09Decoder.init(&packer.out, sondeDataHandler, this);
 
+	telemetryReporters.push_back(new SondeHubReporter("SDRPP00", "", ""));
+
 	fmDemod.start();
 	resampler.start();
 	slicer.start();
@@ -81,6 +85,9 @@ RadiosondeDecoderModule::~RadiosondeDecoderModule()
 	if (vfo) {
 		sigpath::vfoManager.deleteVFO(vfo);
 		vfo = NULL;
+	}
+	for (auto reporter : telemetryReporters) {
+		delete reporter;
 	}
 	gui::menu.removeEntry(name);
 }
@@ -330,10 +337,19 @@ void
 RadiosondeDecoderModule::drawUploadPopup(void *ctx)
 {
 	auto _this = (RadiosondeDecoderModule*)ctx;
-	auto id = "Upload telemetry to external service##_radiosonde_upload_" + _this->name;
+	const auto id = "Upload telemetry to external service##_radiosonde_upload_" + _this->name;
+	const auto tableFlags = ImGuiTableFlags_SizingStretchSame;
 
 	ImGui::OpenPopup(id.c_str());
 	if (ImGui::BeginPopupModal(id.c_str(), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+		if (ImGui::BeginTable(CONCAT("##_radiosonde_upload_endpoints_", _this->name), 3, tableFlags)) {
+			ImGui::TableSetupColumn("Endpoint");
+			ImGui::TableSetupColumn("Type");
+			ImGui::TableSetupColumn("Status");
+			ImGui::TableHeadersRow();
+
+			ImGui::EndTable();
+		}
 		ImGui::EndPopup();
 	}
 }
@@ -344,11 +360,17 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	_this->lastData = *data;
 
+	/* Update logs */
 	if (data->serial != "") {
 		_this->gpxWriter.startTrack(data->serial.c_str());
 	}
 	_this->gpxWriter.addTrackPoint(data->time, data->lat, data->lon, data->alt, data->spd, data->hdg);
 	_this->ptuWriter.addPoint(data);
+
+	/* Upload telemetry */
+	for (auto &reporter : _this->telemetryReporters) {
+		reporter->report(*data);
+	}
 }
 
 void

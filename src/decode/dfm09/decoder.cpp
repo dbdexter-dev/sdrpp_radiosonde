@@ -34,6 +34,7 @@ DFM09Decoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, vo
 	m_nullCh = -1;
 	m_serialBitmask = 0;
 	m_serial = 0;
+	m_sondeData.init("DFM");
 
 	debug = fopen("/tmp/debug.data", "wb");
 
@@ -50,7 +51,7 @@ DFM09Decoder::setInput(dsp::stream<uint8_t>* in)
 	generic_block<DFM09Decoder>::unregisterInput(m_in);
 
 	m_in = in;
-	m_sondeData.init();
+	m_sondeData.init("DFM");
 
 	generic_block<DFM09Decoder>::registerInput(m_in);
 	generic_block<DFM09Decoder>::tempStart();
@@ -60,7 +61,7 @@ void
 DFM09Decoder::doStop()
 {
 	m_serialBitmask = 0;
-	m_sondeData.init();
+	m_sondeData.init("DFM");
 	generic_block<DFM09Decoder>::doStop();
 }
 

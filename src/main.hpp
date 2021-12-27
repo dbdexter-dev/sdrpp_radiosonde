@@ -10,6 +10,7 @@
 #include "demod/gardner.hpp"
 #include "demod/slicer.hpp"
 #include "gpx.hpp"
+#include "net/common.hpp"
 #include "ptu.hpp"
 
 /* Display name, symbol rate, bandwidth, syncword, syncword length (bits), frame length (bits), decoder */
@@ -32,19 +33,21 @@ private:
 	bool uploadPopupOpen;
 	char gpxFilename[2048];
 	char ptuFilename[2048];
+
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
 	dsp::GardnerResampler resampler;
 	dsp::Slicer slicer;
 	dsp::Framer framer;
 	dsp::BitPacker packer;
+	std::vector<TelemetryReporter*> telemetryReporters;
 
 	RS41Decoder rs41Decoder;
 	DFM09Decoder dfm09Decoder;
 
 	const sondespec_t supportedTypes[2] = {
 		sondespec_t("RS41", RS41_BAUDRATE, 1e4, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN, &rs41Decoder),
-		sondespec_t("DFM09", DFM09_BAUDRATE, 1e4, DFM09_SYNCWORD, DFM09_SYNC_LEN, DFM09_FRAME_LEN, &dfm09Decoder),
+		sondespec_t("DFM", DFM09_BAUDRATE, 1e4, DFM09_SYNCWORD, DFM09_SYNC_LEN, DFM09_FRAME_LEN, &dfm09Decoder),
 	};
 	int selectedType = -1;
 	dsp::generic_unnamed_block *activeDecoder;

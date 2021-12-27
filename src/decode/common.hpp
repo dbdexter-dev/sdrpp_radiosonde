@@ -4,7 +4,8 @@
 class SondeData {
 public:
 	SondeData() { init(); }
-	void init() {
+	void init(std::string type="") {
+		this->type = type;
 		serial = "";
 		seq = time = burstkill = 0;
 		lat = lon = alt = 0;
@@ -14,6 +15,7 @@ public:
 		auxData = "";
 	};
 
+	std::string type;           /* Radiosonde type */
 	std::string serial;         /* Serial number */
 	int seq;                    /* Frame sequence number */
 	time_t time;                /* Onboard time */

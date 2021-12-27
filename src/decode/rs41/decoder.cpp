@@ -96,6 +96,7 @@ RS41Decoder::init(dsp::stream<uint8_t> *in, void (*handler)(SondeData *data, voi
 	                                  RS41_REEDSOLOMON_ROOT_SKIP,
 	                                  RS41_REEDSOLOMON_T);
 	m_sondeData.init();
+	m_sondeData.type = "RS41";
 	m_calibrated = false;
 	memcpy(&m_calibData, _defaultCalibData, sizeof(_defaultCalibData));
 	memset(m_calibDataBitmap, 0xFF, sizeof(m_calibDataBitmap));
@@ -113,7 +114,7 @@ RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 	generic_block<RS41Decoder>::unregisterInput(m_in);
 
 	m_in = in;
-	m_sondeData.init();
+	m_sondeData.init("RS41");
 	m_calibrated = false;
 	memset(m_calibDataBitmap, 0xFF, sizeof(m_calibDataBitmap));
 	m_calibDataBitmap[sizeof(m_calibDataBitmap)-1] &= ~((1 << (7 - (RS41_CALIB_FRAGCOUNT-1)%8)) - 1);
@@ -125,7 +126,7 @@ RS41Decoder::setInput(dsp::stream<uint8_t>* in)
 void
 RS41Decoder::doStop()
 {
-	m_sondeData.init();
+	m_sondeData.init("RS41");
 	generic_block<RS41Decoder>::doStop();
 }
 
@@ -137,6 +138,7 @@ RS41Decoder::run()
 	RS41Subframe *subframe;
 	float oldPressure;
 	int offset, outCount, numFrames, bytesLeft;
+	bool newData = false;
 
 	assert(generic_block<RS41Decoder>::_block_init);
 	if ((numFrames = m_in->read()) < 0) return -1;
@@ -165,13 +167,16 @@ RS41Decoder::run()
 
 			/* Check subframe checksum */
 			if (!rs41_crc_check(subframe)) continue;
+			newData = true;
 
 			/* Update the generic info struct with the data inside the subframe */
 			updateSondeData(&m_sondeData, subframe);
 		}
 
-		m_handler(&m_sondeData, m_ctx);
-		outCount++;
+		if (newData) {
+			m_handler(&m_sondeData, m_ctx);
+			outCount++;
+		}
 	}
 
 	m_in->flush();
@@ -189,8 +194,8 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 	RS41Subframe_GPSPos *gpspos;
 	RS41Subframe_XDATA *xdata;
 
-	int i;
 	float x, y, z, dx, dy, dz;
+	char termSerial[RS41_SERIAL_LEN + 1];
 	bool hasPressureSensor = false;
 
 	switch (subframe->type) {
@@ -198,8 +203,9 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			status = (RS41Subframe_Status*)subframe;
 
 			info->calibrated = updateCalibData(status);
-			info->serial = status->serial;
-			info->serial[RS41_SERIAL_LEN] = 0;
+			strncpy(termSerial, status->serial, RS41_SERIAL_LEN);
+			termSerial[RS41_SERIAL_LEN] = 0;
+			info->serial = termSerial;
 			info->burstkill = m_calibData.burstkill_timer == 0xFFFF ? -1 : m_calibData.burstkill_timer;
 			info->seq = status->frame_seq;
 			break;
@@ -235,8 +241,8 @@ RS41Decoder::updateSondeData(SondeData *info, RS41Subframe *subframe)
 			break;
 		case RS41_SFTYPE_XDATA:
 			xdata = (RS41Subframe_XDATA*)subframe;
-			info->rawAuxData = std::string(xdata->ascii_data, xdata->len);
-			info->auxData = decodeXDATA(info, xdata->ascii_data, xdata->len);
+			info->rawAuxData = std::string(xdata->ascii_data, xdata->len - 1);
+			info->auxData = decodeXDATA(info, xdata->ascii_data, xdata->len - 1);
 			break;
 		case RS41_SFTYPE_GPSRAW:
 		case RS41_SFTYPE_EMPTY:
