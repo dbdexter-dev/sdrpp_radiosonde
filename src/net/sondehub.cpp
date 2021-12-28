@@ -115,7 +115,11 @@ void
 SondeHubReporter::workerLoop(void *ctx)
 {
 	auto _this = (SondeHubReporter*)ctx;
+	time_t now;
+	char dateHeader[128];
 	nlohmann::json element;
+
+	setlocale(LC_TIME, "C");
 
 	while (true) {
 		{
@@ -127,9 +131,17 @@ SondeHubReporter::workerLoop(void *ctx)
 			_this->m_telemetryQueue.pop_back();
 		}
 
+		now = time(NULL);
+		strftime(dateHeader, sizeof(dateHeader),
+				"%a, %d %b %Y %T GMT",
+				gmtime(&now));
 		httplib::Client client(_this->m_addr.c_str());
+		httplib::Headers headers = {
+			{"Date", dateHeader}
+		};
+
 		try {
-			client.Put(_this->m_endpoint.c_str(), element.dump(4), "application/json");
+			client.Put(_this->m_endpoint.c_str(), headers, element.dump(4), "application/json");
 			_this->m_status = "OK";
 		} catch (std::exception &e) {
 			spdlog::warn("[sdrpp_radiosonde] Error uploading telemetry: {0}", e.what());
