@@ -1,4 +1,5 @@
 #include <config.h>
+#include <cstdlib>
 #include <gui/gui.h>
 #include <gui/style.h>
 #include <imgui.h>
@@ -7,6 +8,7 @@
 #include <time.h>
 #include <options.h>
 #include "main.hpp"
+#include "version.h"
 
 #include "net/sondehub.hpp"
 
@@ -20,7 +22,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 5, 2,
+    /* Version:         */ atoi(RS_VERSION_MAJOR), atoi(RS_VERSION_MINOR), atoi(RS_VERSION_BUILD),
     /* Max instances    */ -1
 };
 
@@ -93,8 +95,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 
 	rs41Decoder.init(&packer.out, sondeDataHandler, this);
 	dfm09Decoder.init(&packer.out, sondeDataHandler, this);
-
-	reporter = new SondeHubReporter("SDRPP00", "http://127.0.0.1", "/sondes/telemetry", 45.0, 9.11, 200);
+	reporter = NULL;
 
 	fmDemod.start();
 	resampler.start();
@@ -479,6 +480,7 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 	}
 	if (_this->ptuOutput) {
 		config.acquire();
+
 		config.conf[_this->name]["ptuPath"] = _this->ptuFilename;
 		config.release(true);
 	}
@@ -491,7 +493,15 @@ RadiosondeDecoderModule::onUploadStatusChanged(void *ctx)
 
 	if (_this->upload) {
 		if (_this->reporter) delete _this->reporter;
-		_this->reporter = new SondeHubReporter(_this->uploadCallsign, _this->uploadHost, _this->uploadEndpoint);
+		if (strlen(_this->uploadLat) > 0 && strlen(_this->uploadLon) > 0 && strlen(_this->uploadAlt) > 0) {
+			auto lat = strtof(_this->uploadLat, NULL);
+			auto lon = strtof(_this->uploadLon, NULL);
+			auto alt = strtof(_this->uploadAlt, NULL);
+
+			_this->reporter = new SondeHubReporter(_this->uploadCallsign, _this->uploadHost, _this->uploadEndpoint, lat, lon, alt);
+		} else {
+			_this->reporter = new SondeHubReporter(_this->uploadCallsign, _this->uploadHost, _this->uploadEndpoint);
+		}
 	} else if (_this->reporter) {
 		delete _this->reporter;
 		_this->reporter = NULL;

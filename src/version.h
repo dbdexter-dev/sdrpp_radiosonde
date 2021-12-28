@@ -1,0 +1,7 @@
+#pragma once
+
+#define RS_VERSION_MAJOR "0"
+#define RS_VERSION_MINOR "5"
+#define RS_VERSION_BUILD "2"
+
+#define RS_VERSION RS_VERSION_MAJOR "." RS_VERSION_MINOR "." RS_VERSION_BUILD

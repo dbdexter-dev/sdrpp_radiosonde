@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 #include "sondehub.hpp"
 #include "httplib.h"
+#include "version.h"
 
 const std::map<std::string, std::string> SondeHubReporter::m_manufacturers = {
 	{"RS41", "Vaisala"},
@@ -60,7 +61,7 @@ SondeHubReporter::report(const SondeData &data)
 	auto manuf = m_manufacturers.find(data.type);
 	nlohmann::json telemetry = {
 		{"software_name", "sdrpp_radiosonde"},
-		{"software_version", "0.5.2"},
+		{"software_version", RS_VERSION},
 	};
 
 	/* Sanity checks before uploading */
