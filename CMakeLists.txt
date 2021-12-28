@@ -8,6 +8,12 @@ target_link_libraries(radiosonde_decoder PRIVATE sdrpp_core)
 set_target_properties(radiosonde_decoder PROPERTIES PREFIX "")
 target_include_directories(radiosonde_decoder PRIVATE "src/")
 
+find_library(OPENSSL_LIB NAMES openssl libopenssl)
+if (OPENSSL_LIB)
+	add_definitions(-DCPPHTTPLIB_OPENSSL_SUPPORT)
+	target_link_libraries(radiosonde_decoder PRIVATE ${OPENSSL_LIB})
+endif()
+
 if (MSVC)
     target_compile_options(radiosonde_decoder PRIVATE /O2 /Ob2 /std:c++17 /EHsc)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")

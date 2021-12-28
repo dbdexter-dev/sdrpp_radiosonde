@@ -24,10 +24,7 @@ private:
 	const static std::map<std::string, std::string> m_manufacturers;
 	float m_lat, m_lon, m_alt;
 	bool m_uploaderPosition;
-	std::string m_callsign;
-	std::string m_addr;
-	std::string m_endpoint;
-	std::string m_status;
+	std::string m_callsign, m_addr, m_endpoint, m_status;
 	std::thread m_workerThread;
 	std::atomic<bool> m_running;
 	std::mutex m_mutex;

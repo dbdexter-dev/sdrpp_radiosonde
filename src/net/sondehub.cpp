@@ -128,7 +128,9 @@ SondeHubReporter::workerLoop(void *ctx)
 
 			if (!_this->m_running) return;
 			element = std::move(_this->m_telemetryQueue.back());
-			_this->m_telemetryQueue.pop_back();
+			/* Only report the last telemetry frame */
+			_this->m_telemetryQueue.clear();
+			//_this->m_telemetryQueue.pop_back();
 		}
 
 		now = time(NULL);
@@ -141,8 +143,16 @@ SondeHubReporter::workerLoop(void *ctx)
 		};
 
 		try {
-			client.Put(_this->m_endpoint.c_str(), headers, element.dump(4), "application/json");
-			_this->m_status = "OK";
+			auto resp = client.Put(_this->m_endpoint.c_str(), headers, element.dump(4), "application/json");
+			if (resp.error() != httplib::Error::Success) {
+				spdlog::warn("[sdrpp_radiosonde] HTTP connection failed: {0}", resp.error());
+				_this->m_status = "Error";
+			} else if (resp->status != 200) {
+				spdlog::warn("[sdrpp_radiosonde] PUT request failed ({0}): {1}", resp->status, resp->body);
+				_this->m_status = "Error";
+			} else {
+				_this->m_status = resp->body;
+			}
 		} catch (std::exception &e) {
 			spdlog::warn("[sdrpp_radiosonde] Error uploading telemetry: {0}", e.what());
 			_this->m_status = e.what();
