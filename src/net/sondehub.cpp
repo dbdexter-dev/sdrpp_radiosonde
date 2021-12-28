@@ -1,5 +1,7 @@
 #include <ctime>
 #include <iostream>
+#include <stdexcept>
+#include <spdlog/spdlog.h>
 #include "sondehub.hpp"
 #include "httplib.h"
 
@@ -12,15 +14,43 @@ SondeHubReporter::SondeHubReporter(const char *callsign, const char *addr, const
 	: m_callsign(callsign), m_addr(addr), m_endpoint(endpoint)
 {
 	m_running = true;
+	m_uploaderPosition = false;
+	m_workerThread = std::thread(SondeHubReporter::workerLoop, this);
+}
+
+SondeHubReporter::SondeHubReporter(const char *callsign, const char *addr, const char *endpoint, float lat, float lon, float alt)
+	: m_callsign(callsign), m_addr(addr), m_endpoint(endpoint)
+{
+	m_running = true;
+	m_uploaderPosition = true;
+	m_lat = lat;
+	m_lon = lon;
+	m_alt = alt;
 	m_workerThread = std::thread(SondeHubReporter::workerLoop, this);
 }
 
 SondeHubReporter::~SondeHubReporter()
 {
 	m_running = false;
+	m_cond.notify_all();
 	if (m_workerThread.joinable()) {
 		m_workerThread.join();
 	}
+}
+
+void
+SondeHubReporter::setPosition(float lat, float lon, float alt)
+{
+	m_lat = lat;
+	m_lon = lon;
+	m_alt = alt;
+	m_uploaderPosition = true;
+}
+
+void
+SondeHubReporter::setCallsign(const char *callsign)
+{
+	m_callsign = callsign;
 }
 
 void
@@ -67,6 +97,10 @@ SondeHubReporter::report(const SondeData &data)
 		}
 	}
 
+	if (m_uploaderPosition) {
+		telemetry["uploader_position"] = {m_lat, m_lon, m_alt};
+	}
+
 	/* Asynchronously send this to the speecified endpoint */
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
@@ -92,7 +126,15 @@ SondeHubReporter::workerLoop(void *ctx)
 			_this->m_telemetryQueue.pop_back();
 		}
 
-		std::cout << element.dump(4) << std::endl;
+		httplib::Client client(_this->m_addr.c_str());
+		try {
+			client.Put(_this->m_endpoint.c_str(), element.dump(4), "application/json");
+			_this->m_status = "OK";
+		} catch (std::exception &e) {
+			spdlog::warn("[sdrpp_radiosonde] Error uploading telemetry: {0}", e.what());
+			_this->m_status = e.what();
+		}
+
 	}
 }
 

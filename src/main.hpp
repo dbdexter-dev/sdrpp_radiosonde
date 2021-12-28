@@ -29,10 +29,11 @@ public:
 private:
 	std::string name;
 	bool enabled = true;
-	bool gpxOutput = false, ptuOutput = false;
+	bool gpxOutput = false, ptuOutput = false, upload = false;
 	bool uploadPopupOpen;
 	char gpxFilename[2048];
 	char ptuFilename[2048];
+	char uploadHost[2048], uploadEndpoint[2048], uploadCallsign[512], uploadLat[128], uploadLon[128], uploadAlt[128];
 
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
@@ -40,7 +41,7 @@ private:
 	dsp::Slicer slicer;
 	dsp::Framer framer;
 	dsp::BitPacker packer;
-	std::vector<TelemetryReporter*> telemetryReporters;
+	TelemetryReporter *reporter;
 
 	RS41Decoder rs41Decoder;
 	DFM09Decoder dfm09Decoder;
@@ -62,4 +63,5 @@ private:
 	static void onTypeSelected(void *ctx, int selection);
 	static void onGPXOutputChanged(void *ctx);
 	static void onPTUOutputChanged(void *ctx);
+	static void onUploadStatusChanged(void *ctx);
 };

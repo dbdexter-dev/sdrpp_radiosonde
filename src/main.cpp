@@ -31,11 +31,12 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
 	bool created = false;
 	int typeToSelect;
-	std::string gpxPath, ptuPath;
+	std::string gpxPath, ptuPath, uploadHost, uploadEndpoint, uploadCallsign, uploadLat, uploadLon, uploadAlt;
 
 	this->name = name;
 	selectedType = -1;
 	activeDecoder = NULL;
+	upload = false;
 	uploadPopupOpen = false;
 
 	config.acquire();
@@ -43,17 +44,44 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 		config.conf[name]["gpxPath"] = "/tmp/radiosonde.gpx";
 		config.conf[name]["ptuPath"] = "/tmp/radiosonde_ptu.csv";
 		config.conf[name]["sondeType"] = 0;
+		config.conf[name]["upload"]["host"] = "http://127.0.0.1/";
+		config.conf[name]["upload"]["endpoint"] = "/sondes/telemetry";
+		config.conf[name]["upload"]["callsign"] = "";
+		config.conf[name]["upload"]["lat"] = "";
+		config.conf[name]["upload"]["lon"] = "";
+		config.conf[name]["upload"]["alt"] = "";
 		created = true;
 	}
 	gpxPath = config.conf[name]["gpxPath"];
 	ptuPath = config.conf[name]["ptuPath"];
 	typeToSelect = config.conf[name]["sondeType"];
+	try {
+		uploadHost = config.conf[name]["upload"]["host"];
+		uploadEndpoint = config.conf[name]["upload"]["endpoint"];
+		uploadCallsign = config.conf[name]["upload"]["callsign"];
+		uploadLat = config.conf[name]["upload"]["lat"];
+		uploadLon = config.conf[name]["upload"]["lon"];
+		uploadAlt = config.conf[name]["upload"]["alt"];
+	} catch (nlohmann::detail::type_error &e) {
+		uploadHost = "";
+		uploadEndpoint = "";
+		uploadCallsign = "";
+		uploadLat = "";
+		uploadLon = "";
+		uploadAlt = "";
+	}
 	config.release(created);
 
 	auto& [_un, symRate, bw, syncWord, syncLen, frameLen, _un2] = supportedTypes[typeToSelect];
 
 	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
 	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
+	strncpy(this->uploadHost, uploadHost.c_str(), sizeof(this->uploadHost)-1);
+	strncpy(this->uploadEndpoint, uploadEndpoint.c_str(), sizeof(this->uploadEndpoint)-1);
+	strncpy(this->uploadCallsign, uploadCallsign.c_str(), sizeof(this->uploadCallsign)-1);
+	strncpy(this->uploadLat, uploadLat.c_str(), sizeof(this->uploadLat)-1);
+	strncpy(this->uploadLon, uploadLon.c_str(), sizeof(this->uploadLon)-1);
+	strncpy(this->uploadAlt, uploadAlt.c_str(), sizeof(this->uploadAlt)-1);
 
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
@@ -66,7 +94,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	rs41Decoder.init(&packer.out, sondeDataHandler, this);
 	dfm09Decoder.init(&packer.out, sondeDataHandler, this);
 
-	telemetryReporters.push_back(new SondeHubReporter("SDRPP00", "", ""));
+	reporter = new SondeHubReporter("SDRPP00", "http://127.0.0.1", "/sondes/telemetry", 45.0, 9.11, 200);
 
 	fmDemod.start();
 	resampler.start();
@@ -86,9 +114,7 @@ RadiosondeDecoderModule::~RadiosondeDecoderModule()
 		sigpath::vfoManager.deleteVFO(vfo);
 		vfo = NULL;
 	}
-	for (auto reporter : telemetryReporters) {
-		delete reporter;
-	}
+	if (reporter) delete reporter;
 	gui::menu.removeEntry(name);
 }
 
@@ -138,7 +164,6 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	const float width = ImGui::GetContentRegionAvailWidth();
 	char time[64];
-	bool gpxStatusChanged, ptuStatusChanged;
 
 	if (!_this->enabled) style::beginDisabled();
 
@@ -167,7 +192,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Serial no.");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			ImGui::Text(_this->lastData.serial.c_str());
+			ImGui::Text("%s", _this->lastData.serial.c_str());
 		}
 
 		ImGui::TableNextRow();
@@ -308,26 +333,30 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	}
 	/* }}} */
 	/* GPX output file {{{ */
-	gpxStatusChanged = ImGui::Checkbox(CONCAT("GPX track##_gpx_track_", _this->name), &_this->gpxOutput);
+	auto gpxStatusChanged = ImGui::Checkbox(CONCAT("GPX track##_gpx_track_", _this->name), &_this->gpxOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
 	gpxStatusChanged |= ImGui::InputText(CONCAT("##_gpx_fname_", _this->name), _this->gpxFilename, sizeof(gpxFilename)-1,
 	                                     ImGuiInputTextFlags_EnterReturnsTrue);
-	if (gpxStatusChanged) onGPXOutputChanged(ctx);
 	/* }}} */
 	/* Log output file {{{ */
-	ptuStatusChanged = ImGui::Checkbox(CONCAT("Log data##_ptu_log_", _this->name), &_this->ptuOutput);
+	auto ptuStatusChanged = ImGui::Checkbox(CONCAT("Log data##_ptu_log_", _this->name), &_this->ptuOutput);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
 	ptuStatusChanged |= ImGui::InputText(CONCAT("##_ptu_fname_", _this->name), _this->ptuFilename, sizeof(ptuFilename)-1,
 	                                     ImGuiInputTextFlags_EnterReturnsTrue);
-	if (ptuStatusChanged) onPTUOutputChanged(ctx);
 	/* }}} */
 	/* Upload configuration {{{ */
-	if (ImGui::Button(CONCAT("Upload telemetry...##_radiosonde_upload_button_", _this->name), ImVec2(width, 0))) {
+	auto uploadStatusChanged = ImGui::Checkbox(CONCAT("Upload telemetry##_upload_checkbox_", _this->name), &_this->upload);
+	ImGui::SameLine();
+	auto buttonWidth = width - ImGui::GetCursorPosX();
+	if (ImGui::Button(CONCAT("Configure...##_radiosonde_upload_button_", _this->name), ImVec2(buttonWidth, 0))) {
 		_this->uploadPopupOpen = true;
 	}
 	/* }}} */
+	if (ptuStatusChanged) onPTUOutputChanged(ctx);
+	if (gpxStatusChanged) onGPXOutputChanged(ctx);
+	if (uploadStatusChanged) onUploadStatusChanged(ctx);
 
 	if (!_this->enabled) style::endDisabled();
 	if (_this->uploadPopupOpen) drawUploadPopup(ctx);
@@ -337,19 +366,70 @@ void
 RadiosondeDecoderModule::drawUploadPopup(void *ctx)
 {
 	auto _this = (RadiosondeDecoderModule*)ctx;
-	const auto id = "Upload telemetry to external service##_radiosonde_upload_" + _this->name;
-	const auto tableFlags = ImGuiTableFlags_SizingStretchSame;
+	const auto id = "Upload telemetry##_radiosonde_upload_" + _this->name;
+	const auto tableFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
+
 
 	ImGui::OpenPopup(id.c_str());
 	if (ImGui::BeginPopupModal(id.c_str(), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-		if (ImGui::BeginTable(CONCAT("##_radiosonde_upload_endpoints_", _this->name), 3, tableFlags)) {
-			ImGui::TableSetupColumn("Endpoint");
-			ImGui::TableSetupColumn("Type");
-			ImGui::TableSetupColumn("Status");
-			ImGui::TableHeadersRow();
+		const auto width = ImGui::GetContentRegionAvailWidth();
+
+		if (ImGui::BeginTable(CONCAT("##upload_table_", _this->name), 2, ImGuiTableFlags_SizingFixedFit)) {
+			const auto width = std::max(250.0f, ImGui::GetContentRegionAvailWidth());
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("Host");
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+			ImGui::InputText(CONCAT("##_upload_host_", _this->name), _this->uploadHost, sizeof(_this->uploadHost)-1, 0);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("Endpoint");
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+			ImGui::InputText(CONCAT("##_upload_endpoint_", _this->name), _this->uploadEndpoint, sizeof(_this->uploadEndpoint)-1, 0);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("Callsign");
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+			ImGui::InputText(CONCAT("##_upload_callsign_", _this->name), _this->uploadCallsign, sizeof(_this->uploadCallsign)-1, 0);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("Receiver latitude");
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+			ImGui::InputText(CONCAT("##_upload_lat_", _this->name), _this->uploadLat, sizeof(_this->uploadLat)-1, ImGuiInputTextFlags_CharsDecimal);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("Receiver longitude");
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+			ImGui::InputText(CONCAT("##_upload_lon_", _this->name), _this->uploadLon, sizeof(_this->uploadLon)-1, ImGuiInputTextFlags_CharsDecimal);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("Receiver altitude (m)");
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(width - ImGui::GetCursorPosX());
+			ImGui::InputText(CONCAT("##_upload_alt_", _this->name), _this->uploadAlt, sizeof(_this->uploadAlt)-1, ImGuiInputTextFlags_CharsDecimal);
 
 			ImGui::EndTable();
 		}
+
+		auto buttonWidth = ImGui::CalcTextSize("Save").x + 9;
+		ImGui::SetCursorPosX(width - buttonWidth);
+		ImGui::SetNextItemWidth(buttonWidth);
+		if (ImGui::Button(CONCAT("Save##_radiosonde_upload_save_", _this->name))) {
+			_this->uploadPopupOpen = false;
+			onUploadStatusChanged(ctx);
+		}
+
 		ImGui::EndPopup();
 	}
 }
@@ -368,9 +448,7 @@ RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
 	_this->ptuWriter.addPoint(data);
 
 	/* Upload telemetry */
-	for (auto &reporter : _this->telemetryReporters) {
-		reporter->report(*data);
-	}
+	if (_this->reporter) _this->reporter->report(*data);
 }
 
 void
@@ -404,6 +482,29 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 		config.conf[_this->name]["ptuPath"] = _this->ptuFilename;
 		config.release(true);
 	}
+}
+
+void
+RadiosondeDecoderModule::onUploadStatusChanged(void *ctx)
+{
+	auto *_this = (RadiosondeDecoderModule*)ctx;
+
+	if (_this->upload) {
+		if (_this->reporter) delete _this->reporter;
+		_this->reporter = new SondeHubReporter(_this->uploadCallsign, _this->uploadHost, _this->uploadEndpoint);
+	} else if (_this->reporter) {
+		delete _this->reporter;
+		_this->reporter = NULL;
+	}
+
+	config.acquire();
+	config.conf[_this->name]["upload"]["host"] = _this->uploadHost;
+	config.conf[_this->name]["upload"]["endpoint"] = _this->uploadEndpoint;
+	config.conf[_this->name]["upload"]["callsign"] = _this->uploadCallsign;
+	config.conf[_this->name]["upload"]["lat"] = _this->uploadLat;
+	config.conf[_this->name]["upload"]["lon"] = _this->uploadLon;
+	config.conf[_this->name]["upload"]["alt"] = _this->uploadAlt;
+	config.release(true);
 }
 
 void
