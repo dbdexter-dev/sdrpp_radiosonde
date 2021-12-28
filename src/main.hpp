@@ -9,9 +9,9 @@
 #include "decode/dfm09/decoder.hpp"
 #include "demod/gardner.hpp"
 #include "demod/slicer.hpp"
-#include "gpx.hpp"
 #include "net/common.hpp"
-#include "ptu.hpp"
+#include "output/gpx.hpp"
+#include "output/ptu.hpp"
 
 /* Display name, symbol rate, bandwidth, syncword, syncword length (bits), frame length (bits), decoder */
 typedef std::tuple<const char*, float, float, uint64_t, int, int, dsp::generic_unnamed_block*> sondespec_t;
