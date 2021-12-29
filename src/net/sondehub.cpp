@@ -148,7 +148,7 @@ SondeHubReporter::workerLoop(void *ctx)
 				spdlog::warn("[sdrpp_radiosonde] HTTP connection failed: {0}", resp.error());
 				_this->m_status = "Error";
 			} else if (resp->status != 200) {
-				spdlog::warn("[sdrpp_radiosonde] PUT request failed ({0}): {1}", resp->status, resp->body);
+				spdlog::warn("[sdrpp_radiosonde] PUT request failed ({0}):\n{1}", resp->status, resp->body);
 				_this->m_status = "Error";
 			} else {
 				_this->m_status = resp->body;

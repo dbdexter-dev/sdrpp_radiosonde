@@ -46,7 +46,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 		config.conf[name]["gpxPath"] = "/tmp/radiosonde.gpx";
 		config.conf[name]["ptuPath"] = "/tmp/radiosonde_ptu.csv";
 		config.conf[name]["sondeType"] = 0;
-		config.conf[name]["upload"]["host"] = "http://127.0.0.1/";
+		config.conf[name]["upload"]["host"] = "https://sondehub.org/";
 		config.conf[name]["upload"]["endpoint"] = "/sondes/telemetry";
 		config.conf[name]["upload"]["callsign"] = "";
 		config.conf[name]["upload"]["lat"] = "";
@@ -65,8 +65,8 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 		uploadLon = config.conf[name]["upload"]["lon"];
 		uploadAlt = config.conf[name]["upload"]["alt"];
 	} catch (nlohmann::detail::type_error &e) {
-		uploadHost = "";
-		uploadEndpoint = "";
+		uploadHost = "https://sondehub.org/";
+		uploadEndpoint = "/sondes/telemetry";
 		uploadCallsign = "";
 		uploadLat = "";
 		uploadLon = "";
@@ -368,8 +368,6 @@ RadiosondeDecoderModule::drawUploadPopup(void *ctx)
 {
 	auto _this = (RadiosondeDecoderModule*)ctx;
 	const auto id = "Upload telemetry##_radiosonde_upload_" + _this->name;
-	const auto tableFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
-
 
 	ImGui::OpenPopup(id.c_str());
 	if (ImGui::BeginPopupModal(id.c_str(), NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {

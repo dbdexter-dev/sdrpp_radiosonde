@@ -3,6 +3,8 @@
 
 class TelemetryReporter {
 public:
+	virtual ~TelemetryReporter() {};
+
 	virtual void report(const SondeData &data) = 0;
 	virtual const char *getType() = 0;
 	virtual const char *getTarget() = 0;
