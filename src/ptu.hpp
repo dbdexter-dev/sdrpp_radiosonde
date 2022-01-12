@@ -20,7 +20,7 @@ public:
 	 *
 	 * @param data data to log
 	 */
-	void addPoint(SondeData *data);
+	void addPoint(SondeFullData *data);
 private:
 	FILE *m_fd;
 };

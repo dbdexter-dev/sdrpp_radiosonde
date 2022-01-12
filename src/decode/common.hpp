@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
 
-class SondeData {
+class SondeFullData {
 public:
-	SondeData() { init(); }
+	SondeFullData() { init(); }
 	void init() {
 		serial = "";
 		seq = time = burstkill = 0;
@@ -23,5 +23,6 @@ public:
 	float temp, rh;             /* Temperature (degrees C), relative humidity (%) */
 	float dewpt, pressure;      /* Dew point (degrees C), pressure (hPa) */
 	bool calibrated;            /* Whether all the calibration data has been received */
+	float calib_percent;        /* Calibration status (0-100) */
 	std::string auxData;        /* Auxiliary freeform data */
 };

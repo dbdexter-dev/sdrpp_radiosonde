@@ -13,6 +13,7 @@
 #define SNAP_INTERVAL 5000
 #define GARDNER_DAMP 0.707
 #define UNCAL_COLOR IM_COL32(255,234,0,255)
+#define FM_SAMPLE_RATE 25000
 
 SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
@@ -27,9 +28,7 @@ ConfigManager config;
 
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
-	float symRate, bw;
-	uint64_t syncWord;
-	int syncLen, frameLen;
+	float bw = FM_SAMPLE_RATE;
 	bool created = false;
 	int typeToSelect;
 	std::string gpxPath, ptuPath;
@@ -50,31 +49,18 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	typeToSelect = config.conf[name]["sondeType"];
 	config.release(created);
 
-	symRate = std::get<1>(supportedTypes[typeToSelect]);
-	bw = std::get<2>(supportedTypes[typeToSelect]);
-	syncWord = std::get<3>(supportedTypes[typeToSelect]);
-	syncLen = std::get<4>(supportedTypes[typeToSelect]);
-	frameLen = std::get<5>(supportedTypes[typeToSelect]);
-
 	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
 	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
 
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
 	fmDemod.init(vfo->output, bw, bw/2.0f);
-	resampler.init(&fmDemod.out, symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
-	slicer.init(&resampler.out);
-	framer.init(&slicer.out, syncWord, syncLen, frameLen);
-	packer.init(&framer.out);
-
-	rs41Decoder.init(&packer.out, sondeDataHandler, this);
-	dfm09Decoder.init(&packer.out, sondeDataHandler, this);
+	rs41decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
+	dfm09decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
+	ims100decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
+	m10decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
 
 	fmDemod.start();
-	resampler.start();
-	slicer.start();
-	framer.start();
-	packer.start();
 	onTypeSelected(this, typeToSelect);
 	enabled = true;
 
@@ -97,9 +83,6 @@ RadiosondeDecoderModule::enable() {
 	onTypeSelected(this, selectedType);
 
 	fmDemod.start();
-	resampler.start();
-	slicer.start();
-	framer.start();
 	enabled = true;
 }
 
@@ -108,9 +91,6 @@ RadiosondeDecoderModule::disable() {
 	if (activeDecoder) activeDecoder->stop();
 	activeDecoder = NULL;
 
-	framer.stop();
-	slicer.stop();
-	resampler.stop();
 	fmDemod.stop();
 
 	if (vfo) sigpath::vfoManager.deleteVFO(vfo);
@@ -297,7 +277,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Aux. data");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			ImGui::Text(_this->lastData.auxData.c_str());
+			ImGui::Text("%s", _this->lastData.auxData.c_str());
 		}
 
 		ImGui::EndTable();
@@ -324,7 +304,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 }
 
 void
-RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
+RadiosondeDecoderModule::sondeDataHandler(SondeFullData *data, void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	_this->lastData = *data;
@@ -372,9 +352,7 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 void
 RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 {
-	float symRate, bw;
-	uint64_t syncWord;
-	int syncLen, frameLen;
+	float bw = FM_SAMPLE_RATE;
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 
 	/* Ensure that the selection is within bounds */
@@ -394,13 +372,6 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	config.conf[_this->name]["sondeType"] = selection;
 	config.release(true);
 
-	/* Retrieve new selection parameters */
-	symRate = std::get<1>(_this->supportedTypes[selection]);
-	bw = std::get<2>(_this->supportedTypes[selection]);
-	syncWord = std::get<3>(_this->supportedTypes[selection]);
-	syncLen = std::get<4>(_this->supportedTypes[selection]);
-	frameLen = std::get<5>(_this->supportedTypes[selection]);
-
 	/* Update VFO */
 	_this->fmDemod.stop();
 	if (_this->vfo) sigpath::vfoManager.deleteVFO(_this->vfo);
@@ -408,15 +379,8 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->fmDemod.setInput(_this->vfo->output);
 	_this->fmDemod.start();
 
-	/* Update resampler parameters */
-	_this->resampler.setLoopParams(symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
-
-	/* Update framer parameters */
-	_this->framer.setSyncWord(syncWord, syncLen);
-	_this->framer.setFrameLen(frameLen);
-
 	/* Spin up the appropriate decoder */
-	_this->activeDecoder = std::get<6>(_this->supportedTypes[selection]);
+	_this->activeDecoder = std::get<1>(_this->supportedTypes[selection]);
 	_this->activeDecoder->start();
 }
 /* }}} */
