@@ -63,7 +63,8 @@ namespace radiosonde {
 					case PTU:
 						m_data.temp = fragment.data.ptu.temp;
 						m_data.rh = fragment.data.ptu.rh;
-						m_data.pressure = fragment.data.ptu.pressure;
+						if (fragment.data.ptu.pressure > 0)
+							m_data.pressure = fragment.data.ptu.pressure;
 						m_data.calibrated = fragment.data.ptu.calibrated;
 						m_data.calib_percent = fragment.data.ptu.calib_percent;
 						m_data.dewpt = dewpt(m_data.temp, m_data.rh);

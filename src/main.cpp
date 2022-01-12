@@ -13,7 +13,7 @@
 #define SNAP_INTERVAL 5000
 #define GARDNER_DAMP 0.707
 #define UNCAL_COLOR IM_COL32(255,234,0,255)
-#define FM_SAMPLE_RATE 25000
+#define OUT_SAMPLE_RATE 48000
 
 SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
@@ -28,7 +28,7 @@ ConfigManager config;
 
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
-	float bw = FM_SAMPLE_RATE;
+	float bw;
 	bool created = false;
 	int typeToSelect;
 	std::string gpxPath, ptuPath;
@@ -52,15 +52,24 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
 	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
 
+	bw = std::get<1>(supportedTypes[typeToSelect]);
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
 	fmDemod.init(vfo->output, bw, bw/2.0f);
-	rs41decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
-	dfm09decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
-	ims100decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
-	m10decoder.init(&fmDemod.out, FM_SAMPLE_RATE, sondeDataHandler, this);
+
+	/* Resampler to 48kHz */
+	window.init(bw, 1000, OUT_SAMPLE_RATE);
+	resampler.init(&fmDemod.out, &window, bw, OUT_SAMPLE_RATE);
+	window.setSampleRate(bw * resampler.getInterpolation());
+	resampler.updateWindow(&window);
+
+	rs41decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	dfm09decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	ims100decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	m10decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 
 	fmDemod.start();
+	resampler.start();
 	onTypeSelected(this, typeToSelect);
 	enabled = true;
 
@@ -83,6 +92,7 @@ RadiosondeDecoderModule::enable() {
 	onTypeSelected(this, selectedType);
 
 	fmDemod.start();
+	resampler.start();
 	enabled = true;
 }
 
@@ -92,6 +102,7 @@ RadiosondeDecoderModule::disable() {
 	activeDecoder = NULL;
 
 	fmDemod.stop();
+	resampler.stop();
 
 	if (vfo) sigpath::vfoManager.deleteVFO(vfo);
 	vfo = NULL;
@@ -352,7 +363,7 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 void
 RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 {
-	float bw = FM_SAMPLE_RATE;
+	float bw;
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 
 	/* Ensure that the selection is within bounds */
@@ -372,6 +383,9 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	config.conf[_this->name]["sondeType"] = selection;
 	config.release(true);
 
+	/* Get new bandwidth */
+	bw = std::get<1>(_this->supportedTypes[selection]);
+
 	/* Update VFO */
 	_this->fmDemod.stop();
 	if (_this->vfo) sigpath::vfoManager.deleteVFO(_this->vfo);
@@ -379,8 +393,12 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->fmDemod.setInput(_this->vfo->output);
 	_this->fmDemod.start();
 
+	_this->resampler.setInSampleRate(bw);
+	_this->window.setSampleRate(bw * _this->resampler.getInterpolation());
+	_this->resampler.updateWindow(&_this->window);
+
 	/* Spin up the appropriate decoder */
-	_this->activeDecoder = std::get<1>(_this->supportedTypes[selection]);
+	_this->activeDecoder = std::get<2>(_this->supportedTypes[selection]);
 	_this->activeDecoder->start();
 }
 /* }}} */

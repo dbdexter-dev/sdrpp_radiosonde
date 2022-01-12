@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dsp/block.h"
+#include "dsp/resampling.h"
 #include <module.h>
 #include <dsp/demodulator.h>
 #include <dsp/deframing.h>
@@ -9,8 +10,8 @@
 #include "gpx.hpp"
 #include "ptu.hpp"
 
-/* Display name, symbol rate, bandwidth, syncword, syncword length (bits), frame length (bits), decoder */
-typedef std::tuple<const char*, dsp::generic_unnamed_block*> sondespec_t;
+/* Display name, bandwidth, decoder */
+typedef std::tuple<const char*, float, dsp::generic_unnamed_block*> sondespec_t;
 
 class RadiosondeDecoderModule : public ModuleManager::Instance {
 public:
@@ -30,6 +31,8 @@ private:
 	char ptuFilename[2048];
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
+	dsp::filter_window::BlackmanWindow window;
+	dsp::PolyphaseResampler<float> resampler;
 
 	radiosonde::Decoder<RS41Decoder, rs41_decoder_init, rs41_decoder_deinit, rs41_decode> rs41decoder;
 	radiosonde::Decoder<DFM09Decoder, dfm09_decoder_init, dfm09_decoder_deinit, dfm09_decode> dfm09decoder;
@@ -37,10 +40,10 @@ private:
 	radiosonde::Decoder<M10Decoder, m10_decoder_init, m10_decoder_deinit, m10_decode> m10decoder;
 
 	const sondespec_t supportedTypes[4] = {
-		sondespec_t("RS41", &rs41decoder),
-		sondespec_t("DFM06/09", &dfm09decoder),
-		sondespec_t("IMS100", &dfm09decoder),
-		sondespec_t("M10", &m10decoder),
+		sondespec_t("RS41", 1e4, &rs41decoder),
+		sondespec_t("DFM06/09", 1.5e4, &dfm09decoder),
+		sondespec_t("IMS100", 1.5e4, &ims100decoder),
+		sondespec_t("M10", 3e4, &m10decoder),
 	};
 	int selectedType = -1;
 	dsp::generic_unnamed_block *activeDecoder;
