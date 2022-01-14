@@ -15,7 +15,7 @@ static float dewpt(float temp, float rh);
 static float altitude_to_pressure(float alt);
 
 namespace radiosonde {
-	template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), SondeData (*decoder_get)(T*, int(*)(float*))>
+	template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), SondeData (*decoder_get)(T*, int(*)(float*, size_t))>
 	class Decoder : public dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>> {
 		public:
 			Decoder() {}
@@ -43,7 +43,6 @@ namespace radiosonde {
 				assert(dsp::generic_block<Decoder<T>>::_block_init);
 				/* FIXME this is incredibly sloppy */
 				radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get>::instance = this;
-
 
 				auto fragment = decoder_get(m_decoder, radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get>::read_internal);
 				switch (fragment.type) {
@@ -100,23 +99,34 @@ namespace radiosonde {
 			int m_count, m_offset;
 			SondeFullData m_data;
 
-			static int read_internal(float *dst) {
+			static int read_internal(float *dst, size_t count) {
 				auto _this = instance;
-				if (_this->m_offset >= _this->m_count) {
-					if ((_this->m_count = _this->m_in->read()) <= 0) return 0;
-					_this->m_offset = 0;
+				int copy_count;
+
+				while (count > 0) {
+					if (_this->m_offset >= _this->m_count) {
+						if ((_this->m_count = _this->m_in->read()) <= 0) return 0;
+						_this->m_offset = 0;
+					}
+
+					copy_count = std::min((int)count, _this->m_count - _this->m_offset);
+					memcpy(dst, _this->m_in->readBuf + _this->m_offset, sizeof(*dst) * copy_count);
+					dst += copy_count;
+					count -= copy_count;
+					_this->m_offset += copy_count;
+
+					if (_this->m_offset >= _this->m_count) {
+						_this->m_in->flush();
+					}
 				}
-				*dst = _this->m_in->readBuf[_this->m_offset++];
-				if (_this->m_offset >= _this->m_count) {
-					_this->m_in->flush();
-				}
+
 				return 1;
 			}
 
 	};
 }
 
-template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), SondeData (*decoder_get)(T*, int(*)(float*))>
+template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), SondeData (*decoder_get)(T*, int(*)(float*, size_t))>
 radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get> *radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get>::instance;
 
 static float
