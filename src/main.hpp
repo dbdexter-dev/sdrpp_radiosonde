@@ -43,7 +43,7 @@ private:
 		sondespec_t("RS41", 1e4, &rs41decoder),
 		sondespec_t("DFM06/09", 1.5e4, &dfm09decoder),
 		sondespec_t("IMS100", 1.5e4, &ims100decoder),
-		sondespec_t("M10", 3e4, &m10decoder),
+		sondespec_t("M10", 2.5e4, &m10decoder),
 	};
 	int selectedType = -1;
 	dsp::generic_unnamed_block *activeDecoder;

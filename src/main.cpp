@@ -19,7 +19,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 5, 2,
+    /* Version:         */ 0, 6, 0,
     /* Max instances    */ -1
 };
 
@@ -281,6 +281,9 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1fhPa", _this->lastData.pressure);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Calibration data not yet available.");
+			}
 		}
 
 		ImGui::TableNextRow();
@@ -382,6 +385,7 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	config.acquire();
 	config.conf[_this->name]["sondeType"] = selection;
 	config.release(true);
+
 
 	/* Get new bandwidth */
 	bw = std::get<1>(_this->supportedTypes[selection]);

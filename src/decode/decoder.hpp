@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dsp/block.h>
+#include <mutex>
 #include "common.hpp"
 extern "C" {
 #include "sondedump/include/dfm09.h"
@@ -15,7 +16,7 @@ static float dewpt(float temp, float rh);
 static float altitude_to_pressure(float alt);
 
 namespace radiosonde {
-	template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), SondeData (*decoder_get)(T*, int(*)(float*, size_t))>
+	template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), ParserStatus (*decoder_get)(T*, SondeData*, const float*, size_t)>
 	class Decoder : public dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>> {
 		public:
 			Decoder() {}
@@ -40,57 +41,61 @@ namespace radiosonde {
 			}
 
 			int run() {
-				assert(dsp::generic_block<Decoder<T>>::_block_init);
-				/* FIXME this is incredibly sloppy */
-				radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get>::instance = this;
+				SondeData fragment;
+				int count;
 
-				auto fragment = decoder_get(m_decoder, radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get>::read_internal);
-				switch (fragment.type) {
-					case SOURCE_END:
-						return -1;
-					case FRAME_END:
-						m_callback(&m_data, m_ctx);
-						break;
-					case DATETIME:
-						m_data.time = fragment.data.datetime.datetime;
-						break;
-					case INFO:
-						m_data.serial = fragment.data.info.sonde_serial;
-						m_data.seq = fragment.data.info.seq;
-						m_data.burstkill = fragment.data.info.burstkill_status;
-						break;
-					case PTU:
-						m_data.temp = fragment.data.ptu.temp;
-						m_data.rh = fragment.data.ptu.rh;
-						if (fragment.data.ptu.pressure > 0)
-							m_data.pressure = fragment.data.ptu.pressure;
-						m_data.calibrated = fragment.data.ptu.calibrated;
-						m_data.calib_percent = fragment.data.ptu.calib_percent;
-						m_data.dewpt = dewpt(m_data.temp, m_data.rh);
-						break;
-					case POSITION:
-						m_data.lat = fragment.data.pos.lat;
-						m_data.lon = fragment.data.pos.lon;
-						m_data.alt = fragment.data.pos.alt;
-						m_data.spd = fragment.data.pos.speed;
-						m_data.hdg = fragment.data.pos.heading;
-						m_data.climb = fragment.data.pos.climb;
-						if (!(m_data.pressure == m_data.pressure) || m_data.pressure <= 0)
-							m_data.pressure = altitude_to_pressure(m_data.alt);
-						break;
-					case XDATA:
-						m_data.auxData = fragment.data.xdata.data;
-						break;
-					case EMPTY:
-					case UNKNOWN:
-					default:
-						break;
+				assert(dsp::generic_block<Decoder<T>>::_block_init);
+
+				if ((count = m_in->read()) < 0) return -1;
+
+				while (decoder_get(m_decoder, &fragment, m_in->readBuf, count) != PROCEED) {
+					switch (fragment.type) {
+						case SOURCE_END:
+							return -1;
+						case FRAME_END:
+							m_callback(&m_data, m_ctx);
+							break;
+						case DATETIME:
+							m_data.time = fragment.data.datetime.datetime;
+							break;
+						case INFO:
+							m_data.serial = fragment.data.info.sonde_serial;
+							m_data.seq = fragment.data.info.seq;
+							m_data.burstkill = fragment.data.info.burstkill_status;
+							break;
+						case PTU:
+							m_data.temp = fragment.data.ptu.temp;
+							m_data.rh = fragment.data.ptu.rh;
+							if (fragment.data.ptu.pressure > 0)
+								m_data.pressure = fragment.data.ptu.pressure;
+							m_data.calibrated = fragment.data.ptu.calibrated;
+							m_data.calib_percent = fragment.data.ptu.calib_percent;
+							m_data.dewpt = dewpt(m_data.temp, m_data.rh);
+							break;
+						case POSITION:
+							m_data.lat = fragment.data.pos.lat;
+							m_data.lon = fragment.data.pos.lon;
+							m_data.alt = fragment.data.pos.alt;
+							m_data.spd = fragment.data.pos.speed;
+							m_data.hdg = fragment.data.pos.heading;
+							m_data.climb = fragment.data.pos.climb;
+							if (!(m_data.pressure == m_data.pressure) || m_data.pressure <= 0)
+								m_data.pressure = altitude_to_pressure(m_data.alt);
+							break;
+						case XDATA:
+							m_data.auxData = fragment.data.xdata.data;
+							break;
+						case EMPTY:
+						case UNKNOWN:
+						default:
+							break;
+					}
 				}
 
+				m_in->flush();
 				return 0;
 			}
 
-			static Decoder<T, decoder_init, decoder_deinit, decoder_get> *instance;
 		private:
 			dsp::stream<float> *m_in;
 			void (*m_callback)(SondeFullData *data, void *ctx);
@@ -99,35 +104,8 @@ namespace radiosonde {
 			int m_count, m_offset;
 			SondeFullData m_data;
 
-			static int read_internal(float *dst, size_t count) {
-				auto _this = instance;
-				int copy_count;
-
-				while (count > 0) {
-					if (_this->m_offset >= _this->m_count) {
-						if ((_this->m_count = _this->m_in->read()) <= 0) return 0;
-						_this->m_offset = 0;
-					}
-
-					copy_count = std::min((int)count, _this->m_count - _this->m_offset);
-					memcpy(dst, _this->m_in->readBuf + _this->m_offset, sizeof(*dst) * copy_count);
-					dst += copy_count;
-					count -= copy_count;
-					_this->m_offset += copy_count;
-
-					if (_this->m_offset >= _this->m_count) {
-						_this->m_in->flush();
-					}
-				}
-
-				return 1;
-			}
-
 	};
 }
-
-template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), SondeData (*decoder_get)(T*, int(*)(float*, size_t))>
-radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get> *radiosonde::Decoder<T, decoder_init, decoder_deinit, decoder_get>::instance;
 
 static float
 dewpt(float temp, float rh)
