@@ -15,11 +15,11 @@ set(UNISTALL_TARGET "${UNINSTALL_TARGET_SAVED}")
 target_link_libraries(radiosonde_decoder PRIVATE sondedump_static)
 
 if (MSVC)
-    target_compile_options(radiosonde_decoder PRIVATE /O2 /Ob2 /std:c++17 /EHsc)
+	target_compile_options(radiosonde_decoder PRIVATE /O2 /Ob2 $<$<COMPILE_LANGUAGE:CXX>:/std:c++17> /EHsc)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(radiosonde_decoder PRIVATE -O3 -std=c++17 -Wno-unused-command-line-argument -undefined dynamic_lookup)
+	target_compile_options(radiosonde_decoder PRIVATE -O3 $<$<COMPILE_LANGUAGE:C>:-std=c99> $<$<COMPILE_LANGUAGE:CXX>:-std=c++17> -Wno-unused-command-line-argument -undefined dynamic_lookup)
 else ()
-	target_compile_options(radiosonde_decoder PRIVATE -O3 -g -std=c++17 -Wl,--no-undefined)
+	target_compile_options(radiosonde_decoder PRIVATE -O3 -g $<$<COMPILE_LANGUAGE:C>:-std=c99> $<$<COMPILE_LANGUAGE:CXX>:-std=c++17> -Wl,--no-undefined)
 endif ()
 
 # Install directives

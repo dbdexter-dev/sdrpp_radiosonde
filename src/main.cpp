@@ -7,6 +7,7 @@
 #include <time.h>
 #include <options.h>
 #include "main.hpp"
+#include "utils.hpp"
 
 #define CONCAT(a, b)    ((std::string(a) + b).c_str())
 
@@ -25,7 +26,6 @@ SDRPP_MOD_INFO {
 
 ConfigManager config;
 
-
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
 	float bw;
@@ -39,8 +39,8 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 
 	config.acquire();
 	if (!config.conf.contains(name)) {
-		config.conf[name]["gpxPath"] = "/tmp/radiosonde.gpx";
-		config.conf[name]["ptuPath"] = "/tmp/radiosonde_ptu.csv";
+		config.conf[name]["gpxPath"] = getTempFile("radiosonde.gpx");
+		config.conf[name]["ptuPath"] = getTempFile("radiosonde_ptu.csv");
 		config.conf[name]["sondeType"] = 0;
 		created = true;
 	}
@@ -128,7 +128,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	const float width = ImGui::GetContentRegionAvailWidth();
 	char time[64];
-	bool gpxStatusChanged, ptuStatusChanged, gpxStatus, ptuStatus;
+	bool gpxStatusChanged, ptuStatusChanged;
 
 	if (!_this->enabled) style::beginDisabled();
 
@@ -406,7 +406,6 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->activeDecoder->start();
 }
 /* }}} */
-
 
 /* Module exports {{{ */
 MOD_EXPORT void _INIT_() {

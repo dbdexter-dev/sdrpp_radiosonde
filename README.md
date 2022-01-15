@@ -3,6 +3,15 @@ Radiosonde decoder plugin for SDR++
 
 ![radiosondeGPX](https://user-images.githubusercontent.com/17110004/144872708-2a578c62-5493-4845-9098-9328c4e914bf.png)
 
+Compatibility:
+--------------
+
+This plugin is now based on
+[sondedump](https://github.com/dbdexter-dev/sondedump). You can find a list of
+the supported radiosonde types
+[here](https://github.com/dbdexter-dev/sdrpp_radiosonde/blob/master/src/decode/sondedump).
+
+
 Build instructions
 ------------------
 

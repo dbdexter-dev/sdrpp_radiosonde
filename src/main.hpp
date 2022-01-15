@@ -42,7 +42,7 @@ private:
 	const sondespec_t supportedTypes[4] = {
 		sondespec_t("RS41", 1e4, &rs41decoder),
 		sondespec_t("DFM06/09", 1.5e4, &dfm09decoder),
-		sondespec_t("IMS100", 1.5e4, &ims100decoder),
+		sondespec_t("IMS100", 2e4, &ims100decoder),
 		sondespec_t("M10", 2.5e4, &m10decoder),
 	};
 	int selectedType = -1;
