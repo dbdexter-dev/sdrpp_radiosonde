@@ -44,7 +44,8 @@ namespace radiosonde {
 				SondeData fragment;
 				int count;
 
-				assert(dsp::generic_block<Decoder<T>>::_block_init);
+				typedef dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>> blocktype;
+				assert(blocktype::_block_init);
 
 				if ((count = m_in->read()) < 0) return -1;
 
