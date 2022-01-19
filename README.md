@@ -7,9 +7,8 @@ Compatibility:
 --------------
 
 This plugin is now based on
-[sondedump](https://github.com/dbdexter-dev/sondedump). You can find a list of
-the supported radiosonde types
-[here](https://github.com/dbdexter-dev/sdrpp_radiosonde/blob/master/src/decode/sondedump).
+[sondedump](https://github.com/dbdexter-dev/sondedump). You can find an updated
+list of the supported radiosonde types on the library's page.
 
 
 Build instructions
