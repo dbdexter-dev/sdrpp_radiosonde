@@ -104,9 +104,9 @@ jobs:
       run: cmake "$Env:GITHUB_WORKSPACE" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
     - name: Build
-      run: cmake --build . --config ${{env.BUILD_TYPE}} --target radiosonde_decoder 
+      run: cmake --build "$Env:GITHUB_WORKSPACE" --config ${{env.BUILD_TYPE}} --target radiosonde_decoder 
 
     - uses: actions/upload-artifact@v2
       with:
         name: windows_build
-        path: ${{github.workspace}}/build/decoder_modules/sdrpp_radiosonde/Release/radiosonde_decoder.dll
+        path: ${{github.workspace}}\decoder_modules\sdrpp_radiosonde\Release\radiosonde_decoder.dll
