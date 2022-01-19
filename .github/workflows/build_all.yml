@@ -108,5 +108,5 @@ jobs:
 
     - uses: actions/upload-artifact@v2
       with:
-        name: windows_build
+        name: radiosonde_decoder.dll
         path: ${{github.workspace}}\decoder_modules\sdrpp_radiosonde\Release\radiosonde_decoder.dll
