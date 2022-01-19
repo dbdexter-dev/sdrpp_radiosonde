@@ -42,7 +42,7 @@ jobs:
         file: ${{github.workspace}}/build/decoder_modules/sdrpp_radiosonde/radiosonde_decoder.so
         asset_name: radiosonde_decoder_x64.so
         overwrite: false
-        prerelease: true
+        prerelease: false
 
 
 

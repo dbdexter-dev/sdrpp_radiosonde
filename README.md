@@ -6,13 +6,34 @@ Radiosonde decoder plugin for SDR++
 Compatibility:
 --------------
 
-This plugin is now based on
-[sondedump](https://github.com/dbdexter-dev/sondedump). You can find an updated
-list of the supported radiosonde types on the library's page.
+| Manufacturer | Model    | GPS                | Temperature        | Humidity           |
+|--------------|----------|--------------------|--------------------|--------------------|
+| Vaisala      | RS41-SG  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| Meteomodem   | M10      | :heavy_check_mark: |                    |                    |
+| GRAW         | DFM06/09 | :heavy_check_mark: | :heavy_check_mark: |                    |
+| Meisei       | iMS-100  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 
-Build instructions
-------------------
+Installing
+----------
+
+Binary releases for Windows and Linux (both x86-64 only) are available from
+[the Releases page](https://github.com/dbdexter-dev/sdrpp_radiosonde/releases).
+
+- **Windows**: download the `.dll` file from the latest release, and place it in 
+  the `modules` directory within your SDR++ installation.
+- **Linux**: download the `.so` file from the latest release, and place it in 
+  the `/usr/lib/sdrpp/plugins` folder.
+
+The plugin can then be enabled from the module manager in SDR++, under the name
+*radiosonde\_decoder*
+
+
+Building from source
+--------------------
+
+If no binary is available for your platform, you can build this plugin from
+source:
 
 1. Download the SDR++ source code: `git clone https://github.com/AlexandreRouma/SDRPlusPlus`
 2. Open the top-level `CMakeLists.txt` file, and add the following line in the
@@ -28,6 +49,6 @@ add_subdirectory("decoder_modules/sdrpp_radiosonde")
 endif(OPT_BUILD_RADIOSONDE_DECODER)
 ```
 4. Navigate to the `decoder_modules` folder, then clone this repository: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde --recurse-submodules`
-5. Build SDR++ as usual: `cd .. && mkdir build && cd build && cmake .. && make && sudo make install`
+5. Build and install SDR++ following the guide in the original repository
 6. Enable the module by adding it via the module manager
 
