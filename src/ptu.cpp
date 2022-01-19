@@ -22,7 +22,7 @@ PTUWriter::deinit()
 }
 
 void
-PTUWriter::addPoint(SondeData *data)
+PTUWriter::addPoint(SondeFullData *data)
 {
 	if (!m_fd) return;
 	fprintf(m_fd, "%ld,%.1f,%.1f,%.1f,%.1f,%.6f,%.6f,%.1f,%.1f,%.1f,%.1f,%s\n",

@@ -3,6 +3,14 @@ Radiosonde decoder plugin for SDR++
 
 ![radiosondeGPX](https://user-images.githubusercontent.com/17110004/144872708-2a578c62-5493-4845-9098-9328c4e914bf.png)
 
+Compatibility:
+--------------
+
+This plugin is now based on
+[sondedump](https://github.com/dbdexter-dev/sondedump). You can find an updated
+list of the supported radiosonde types on the library's page.
+
+
 Build instructions
 ------------------
 
@@ -19,7 +27,7 @@ if (OPT_BUILD_RADIOSONDE_DECODER)
 add_subdirectory("decoder_modules/sdrpp_radiosonde")
 endif(OPT_BUILD_RADIOSONDE_DECODER)
 ```
-4. Navigate to the `decoder_modules` folder, then clone this repository: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde`
+4. Navigate to the `decoder_modules` folder, then clone this repository: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde --recurse-submodules`
 5. Build SDR++ as usual: `cd .. && mkdir build && cd build && cmake .. && make && sudo make install`
 6. Enable the module by adding it via the module manager
 

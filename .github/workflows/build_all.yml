@@ -1,0 +1,96 @@
+name: Build binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: AlexandreRouma/SDRPlusPlus
+
+    - uses: actions/checkout@v2
+      with:
+        path: decoder_modules/sdrpp_radiosonde
+        submodules: recursive
+
+    - name: Install dependencies
+      run: sudo apt-get install libfftw3-dev libglfw3-dev libglew-dev libvolk2-dev libsoapysdr-dev libairspyhf-dev libairspy-dev libiio-dev libad9361-dev librtaudio-dev libhackrf-dev librtlsdr-dev libbladerf-dev liblimesuite-dev p7zip-full wget portaudio19-dev libcodec2-dev libssl-dev
+
+    - name: Patch CMakeLists.txt
+      run: cp ${{github.workspace}}/decoder_modules/sdrpp_radiosonde/.github/workflows/CMakeLists.txt ${{github.workspace}}
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target radiosonde_decoder
+
+    - name: Attach artifacts to tag
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{github.ref}}
+        file: ${{github.workspace}}/build/decoder_modules/sdrpp_radiosonde/radiosonde_decoder.so
+        asset_name: radiosonde_decoder_x64.so
+        overwrite: false
+        prerelease: true
+
+
+
+  build_windows:
+    runs-on: windows-latest
+
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: AlexandreRouma/SDRPlusPlus
+
+    - uses: actions/checkout@v2
+      with:
+        path: decoder_modules/sdrpp_radiosonde
+        submodules: recursive
+
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Download PothosSDR
+      run: Invoke-WebRequest -Uri "https://downloads.myriadrf.org/builds/PothosSDR/PothosSDR-2020.01.26-vc14-x64.exe" -OutFile ${{runner.workspace}}/pothos.exe
+
+    - name: Install PothosSDR
+      run: mkdir "C:/Program Files/PothosSDR" ; 7z x ${{runner.workspace}}/pothos.exe -o"C:/Program Files/PothosSDR/"
+
+    - name: Install vcpkg dependencies
+      run: vcpkg install fftw3:x64-windows glew:x64-windows glfw3:x64-windows portaudio:x64-windows openssl-windows:x64-windows
+
+    - name: Install rtaudio
+      run: git clone https://github.com/thestk/rtaudio ; cd rtaudio ; git checkout 2f2fca4502d506abc50f6d4473b2836d24cfb1e3 ; mkdir build ; cd build ; cmake .. ; cmake --build . --config Release ; cmake --install .
+
+    - name: Patch CMakeLists.txt
+      run: cp ${{github.workspace}}/decoder_modules/sdrpp_radiosonde/.github/workflows/CMakeLists.txt ${{github.workspace}}
+
+    - name: Configure
+      run: cmake "$Env:GITHUB_WORKSPACE" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+
+    - name: Build
+      run: cmake --build "$Env:GITHUB_WORKSPACE" --config ${{env.BUILD_TYPE}} --target radiosonde_decoder 
+
+    - name: Attach artifacts to tag
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{github.ref}}
+        file: ${{github.workspace}}\decoder_modules\sdrpp_radiosonde\Release\radiosonde_decoder.dll
+        asset_name: radiosonde_decoder_w64.dll
+        overwrite: false
+        prerelease: true
+

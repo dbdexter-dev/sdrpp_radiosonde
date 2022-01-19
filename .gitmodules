@@ -1,0 +1,4 @@
+[submodule "src/decode/sondedump"]
+	path = src/decode/sondedump
+	url = https://github.com/dbdexter-dev/sondedump
+	branch = master

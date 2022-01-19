@@ -7,29 +7,28 @@
 #include <time.h>
 #include <options.h>
 #include "main.hpp"
+#include "utils.hpp"
 
 #define CONCAT(a, b)    ((std::string(a) + b).c_str())
 
 #define SNAP_INTERVAL 5000
 #define GARDNER_DAMP 0.707
 #define UNCAL_COLOR IM_COL32(255,234,0,255)
+#define OUT_SAMPLE_RATE 48000
 
 SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 5, 2,
+    /* Version:         */ 0, 6, 0,
     /* Max instances    */ -1
 };
 
 ConfigManager config;
 
-
 RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 {
-	float symRate, bw;
-	uint64_t syncWord;
-	int syncLen, frameLen;
+	float bw;
 	bool created = false;
 	int typeToSelect;
 	std::string gpxPath, ptuPath;
@@ -40,8 +39,8 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 
 	config.acquire();
 	if (!config.conf.contains(name)) {
-		config.conf[name]["gpxPath"] = "/tmp/radiosonde.gpx";
-		config.conf[name]["ptuPath"] = "/tmp/radiosonde_ptu.csv";
+		config.conf[name]["gpxPath"] = getTempFile("radiosonde.gpx");
+		config.conf[name]["ptuPath"] = getTempFile("radiosonde_ptu.csv");
 		config.conf[name]["sondeType"] = 0;
 		created = true;
 	}
@@ -50,31 +49,27 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	typeToSelect = config.conf[name]["sondeType"];
 	config.release(created);
 
-	symRate = std::get<1>(supportedTypes[typeToSelect]);
-	bw = std::get<2>(supportedTypes[typeToSelect]);
-	syncWord = std::get<3>(supportedTypes[typeToSelect]);
-	syncLen = std::get<4>(supportedTypes[typeToSelect]);
-	frameLen = std::get<5>(supportedTypes[typeToSelect]);
-
 	strncpy(gpxFilename, gpxPath.c_str(), sizeof(gpxFilename)-1);
 	strncpy(ptuFilename, ptuPath.c_str(), sizeof(ptuFilename)-1);
 
+	bw = std::get<1>(supportedTypes[typeToSelect]);
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
 	fmDemod.init(vfo->output, bw, bw/2.0f);
-	resampler.init(&fmDemod.out, symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
-	slicer.init(&resampler.out);
-	framer.init(&slicer.out, syncWord, syncLen, frameLen);
-	packer.init(&framer.out);
 
-	rs41Decoder.init(&packer.out, sondeDataHandler, this);
-	dfm09Decoder.init(&packer.out, sondeDataHandler, this);
+	/* Resampler to 48kHz */
+	window.init(bw, 1000, OUT_SAMPLE_RATE);
+	resampler.init(&fmDemod.out, &window, bw, OUT_SAMPLE_RATE);
+	window.setSampleRate(bw * resampler.getInterpolation());
+	resampler.updateWindow(&window);
+
+	rs41decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	dfm09decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	ims100decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	m10decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 
 	fmDemod.start();
 	resampler.start();
-	slicer.start();
-	framer.start();
-	packer.start();
 	onTypeSelected(this, typeToSelect);
 	enabled = true;
 
@@ -98,8 +93,6 @@ RadiosondeDecoderModule::enable() {
 
 	fmDemod.start();
 	resampler.start();
-	slicer.start();
-	framer.start();
 	enabled = true;
 }
 
@@ -108,10 +101,8 @@ RadiosondeDecoderModule::disable() {
 	if (activeDecoder) activeDecoder->stop();
 	activeDecoder = NULL;
 
-	framer.stop();
-	slicer.stop();
-	resampler.stop();
 	fmDemod.stop();
+	resampler.stop();
 
 	if (vfo) sigpath::vfoManager.deleteVFO(vfo);
 	vfo = NULL;
@@ -137,7 +128,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	const float width = ImGui::GetContentRegionAvailWidth();
 	char time[64];
-	bool gpxStatusChanged, ptuStatusChanged, gpxStatus, ptuStatus;
+	bool gpxStatusChanged, ptuStatusChanged;
 
 	if (!_this->enabled) style::beginDisabled();
 
@@ -290,6 +281,9 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			if (!_this->lastData.calibrated) ImGui::PushStyleColor(ImGuiCol_Text, UNCAL_COLOR);
 			ImGui::Text("%.1fhPa", _this->lastData.pressure);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
+			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Calibration data not yet available.");
+			}
 		}
 
 		ImGui::TableNextRow();
@@ -297,7 +291,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Aux. data");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			ImGui::Text(_this->lastData.auxData.c_str());
+			ImGui::Text("%s", _this->lastData.auxData.c_str());
 		}
 
 		ImGui::EndTable();
@@ -324,7 +318,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 }
 
 void
-RadiosondeDecoderModule::sondeDataHandler(SondeData *data, void *ctx)
+RadiosondeDecoderModule::sondeDataHandler(SondeFullData *data, void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 	_this->lastData = *data;
@@ -372,9 +366,7 @@ RadiosondeDecoderModule::onPTUOutputChanged(void *ctx)
 void
 RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 {
-	float symRate, bw;
-	uint64_t syncWord;
-	int syncLen, frameLen;
+	float bw;
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
 
 	/* Ensure that the selection is within bounds */
@@ -394,12 +386,9 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	config.conf[_this->name]["sondeType"] = selection;
 	config.release(true);
 
-	/* Retrieve new selection parameters */
-	symRate = std::get<1>(_this->supportedTypes[selection]);
-	bw = std::get<2>(_this->supportedTypes[selection]);
-	syncWord = std::get<3>(_this->supportedTypes[selection]);
-	syncLen = std::get<4>(_this->supportedTypes[selection]);
-	frameLen = std::get<5>(_this->supportedTypes[selection]);
+
+	/* Get new bandwidth */
+	bw = std::get<1>(_this->supportedTypes[selection]);
 
 	/* Update VFO */
 	_this->fmDemod.stop();
@@ -408,19 +397,15 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->fmDemod.setInput(_this->vfo->output);
 	_this->fmDemod.start();
 
-	/* Update resampler parameters */
-	_this->resampler.setLoopParams(symRate/bw, GARDNER_DAMP, symRate/bw/250, symRate/bw/1e4);
-
-	/* Update framer parameters */
-	_this->framer.setSyncWord(syncWord, syncLen);
-	_this->framer.setFrameLen(frameLen);
+	_this->resampler.setInSampleRate(bw);
+	_this->window.setSampleRate(bw * _this->resampler.getInterpolation());
+	_this->resampler.updateWindow(&_this->window);
 
 	/* Spin up the appropriate decoder */
-	_this->activeDecoder = std::get<6>(_this->supportedTypes[selection]);
+	_this->activeDecoder = std::get<2>(_this->supportedTypes[selection]);
 	_this->activeDecoder->start();
 }
 /* }}} */
-
 
 /* Module exports {{{ */
 MOD_EXPORT void _INIT_() {

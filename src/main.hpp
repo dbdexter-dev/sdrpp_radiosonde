@@ -1,19 +1,17 @@
 #pragma once
 
+#include "dsp/block.h"
+#include "dsp/resampling.h"
 #include <module.h>
 #include <dsp/demodulator.h>
 #include <dsp/deframing.h>
-#include "decode/common.hpp"
-#include "decode/framer.hpp"
-#include "decode/rs41/decoder.hpp"
-#include "decode/dfm09/decoder.hpp"
-#include "demod/gardner.hpp"
-#include "demod/slicer.hpp"
+#include <signal_path/signal_path.h>
+#include "decode/decoder.hpp"
 #include "gpx.hpp"
 #include "ptu.hpp"
 
-/* Display name, symbol rate, bandwidth, syncword, syncword length (bits), frame length (bits), decoder */
-typedef std::tuple<const char*, float, float, uint64_t, int, int, dsp::generic_unnamed_block*> sondespec_t;
+/* Display name, bandwidth, decoder */
+typedef std::tuple<const char*, float, dsp::generic_unnamed_block*> sondespec_t;
 
 class RadiosondeDecoderModule : public ModuleManager::Instance {
 public:
@@ -33,27 +31,29 @@ private:
 	char ptuFilename[2048];
 	VFOManager::VFO *vfo;
 	dsp::FloatFMDemod fmDemod;
-	dsp::GardnerResampler resampler;
-	dsp::Slicer slicer;
-	dsp::Framer framer;
-	dsp::BitPacker packer;
+	dsp::filter_window::BlackmanWindow window;
+	dsp::PolyphaseResampler<float> resampler;
 
-	RS41Decoder rs41Decoder;
-	DFM09Decoder dfm09Decoder;
+	radiosonde::Decoder<RS41Decoder, rs41_decoder_init, rs41_decoder_deinit, rs41_decode> rs41decoder;
+	radiosonde::Decoder<DFM09Decoder, dfm09_decoder_init, dfm09_decoder_deinit, dfm09_decode> dfm09decoder;
+	radiosonde::Decoder<IMS100Decoder, ims100_decoder_init, ims100_decoder_deinit, ims100_decode> ims100decoder;
+	radiosonde::Decoder<M10Decoder, m10_decoder_init, m10_decoder_deinit, m10_decode> m10decoder;
 
-	const sondespec_t supportedTypes[2] = {
-		sondespec_t("RS41", RS41_BAUDRATE, 1e4, RS41_SYNCWORD, RS41_SYNC_LEN, RS41_FRAME_LEN, &rs41Decoder),
-		sondespec_t("DFM09", DFM09_BAUDRATE, 1e4, DFM09_SYNCWORD, DFM09_SYNC_LEN, DFM09_FRAME_LEN, &dfm09Decoder),
+	const sondespec_t supportedTypes[4] = {
+		sondespec_t("RS41", 1e4, &rs41decoder),
+		sondespec_t("DFM06/09", 1.5e4, &dfm09decoder),
+		sondespec_t("IMS100", 2e4, &ims100decoder),
+		sondespec_t("M10", 2.5e4, &m10decoder),
 	};
 	int selectedType = -1;
 	dsp::generic_unnamed_block *activeDecoder;
 
-	SondeData lastData;
+	SondeFullData lastData;
 	GPXWriter gpxWriter;
 	PTUWriter ptuWriter;
 
 	static void menuHandler(void *ctx);
-	static void sondeDataHandler(SondeData *data, void *ctx);
+	static void sondeDataHandler(SondeFullData *data, void *ctx);
 	static void onTypeSelected(void *ctx, int selection);
 	static void onGPXOutputChanged(void *ctx);
 	static void onPTUOutputChanged(void *ctx);
