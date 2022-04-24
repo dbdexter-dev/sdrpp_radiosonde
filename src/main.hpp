@@ -38,12 +38,14 @@ private:
 	radiosonde::Decoder<DFM09Decoder, dfm09_decoder_init, dfm09_decoder_deinit, dfm09_decode> dfm09decoder;
 	radiosonde::Decoder<IMS100Decoder, ims100_decoder_init, ims100_decoder_deinit, ims100_decode> ims100decoder;
 	radiosonde::Decoder<M10Decoder, m10_decoder_init, m10_decoder_deinit, m10_decode> m10decoder;
+	radiosonde::Decoder<IMET4Decoder, imet4_decoder_init, imet4_decoder_deinit, imet4_decode> imet4decoder;
 
-	const sondespec_t supportedTypes[4] = {
+	const sondespec_t supportedTypes[5] = {
 		sondespec_t("RS41", 1e4, &rs41decoder),
 		sondespec_t("DFM06/09", 1.5e4, &dfm09decoder),
 		sondespec_t("IMS100", 2e4, &ims100decoder),
-		sondespec_t("M10", 2.5e4, &m10decoder),
+		sondespec_t("M10/M20", 2.5e4, &m10decoder),
+		sondespec_t("iMet-4", 2e4, &imet4decoder),
 	};
 	int selectedType = -1;
 	dsp::generic_unnamed_block *activeDecoder;

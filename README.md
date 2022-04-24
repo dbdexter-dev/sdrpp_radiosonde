@@ -9,9 +9,10 @@ Compatibility:
 | Manufacturer | Model    | GPS                | Temperature        | Humidity           |
 |--------------|----------|--------------------|--------------------|--------------------|
 | Vaisala      | RS41-SG  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| Meteomodem   | M10      | :heavy_check_mark: |                    |                    |
+| Meteomodem   | M10/M20  | :heavy_check_mark: |                    |                    |
 | GRAW         | DFM06/09 | :heavy_check_mark: | :heavy_check_mark: |                    |
 | Meisei       | iMS-100  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| InterMet     | iMet-1/4 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
 
 Installing
@@ -20,9 +21,9 @@ Installing
 Binary releases for Windows and Linux (both x86-64 only) are available from
 [the Releases page](https://github.com/dbdexter-dev/sdrpp_radiosonde/releases).
 
-- **Windows**: download the `.dll` file from the latest release, and place it in 
+- **Windows**: download the `.dll` file from the latest release, and place it in
   the `modules` directory within your SDR++ installation.
-- **Linux**: download the `.so` file from the latest release, and place it in 
+- **Linux**: download the `.so` file from the latest release, and place it in
   the `/usr/lib/sdrpp/plugins` folder.
 
 The plugin can then be enabled from the module manager in SDR++, under the name
@@ -46,7 +47,7 @@ option(OPT_BUILD_RADIOSONDE_DECODER "Build the radiosonde decoder module (no dep
 ```
 if (OPT_BUILD_RADIOSONDE_DECODER)
 add_subdirectory("decoder_modules/sdrpp_radiosonde")
-endif(OPT_BUILD_RADIOSONDE_DECODER)
+endif (OPT_BUILD_RADIOSONDE_DECODER)
 ```
 4. Navigate to the `decoder_modules` folder, then clone this repository: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde --recurse-submodules`
 5. Build and install SDR++ following the guide in the original repository

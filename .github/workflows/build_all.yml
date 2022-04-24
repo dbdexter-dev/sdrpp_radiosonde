@@ -23,7 +23,7 @@ jobs:
         submodules: recursive
 
     - name: Install dependencies
-      run: sudo apt-get install libfftw3-dev libglfw3-dev libglew-dev libvolk2-dev libsoapysdr-dev libairspyhf-dev libairspy-dev libiio-dev libad9361-dev librtaudio-dev libhackrf-dev librtlsdr-dev libbladerf-dev liblimesuite-dev p7zip-full wget portaudio19-dev libcodec2-dev libssl-dev
+      run: sudo apt-get install libfftw3-dev libglfw3-dev libglew-dev libvolk2-dev libsoapysdr-dev libairspyhf-dev libairspy-dev libiio-dev libad9361-dev librtaudio-dev libhackrf-dev librtlsdr-dev libbladerf-dev liblimesuite-dev p7zip-full wget portaudio19-dev libcodec2-dev libssl-dev libzstd-dev
 
     - name: Patch CMakeLists.txt
       run: cp ${{github.workspace}}/decoder_modules/sdrpp_radiosonde/.github/workflows/CMakeLists.txt ${{github.workspace}}
@@ -70,7 +70,7 @@ jobs:
       run: mkdir "C:/Program Files/PothosSDR" ; 7z x ${{runner.workspace}}/pothos.exe -o"C:/Program Files/PothosSDR/"
 
     - name: Install vcpkg dependencies
-      run: vcpkg install fftw3:x64-windows glew:x64-windows glfw3:x64-windows portaudio:x64-windows openssl-windows:x64-windows
+      run: vcpkg install fftw3:x64-windows glfw3:x64-windows portaudio:x64-windows zstd:x64-windows
 
     - name: Install rtaudio
       run: git clone https://github.com/thestk/rtaudio ; cd rtaudio ; git checkout 2f2fca4502d506abc50f6d4473b2836d24cfb1e3 ; mkdir build ; cd build ; cmake .. ; cmake --build . --config Release ; cmake --install .

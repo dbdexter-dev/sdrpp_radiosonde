@@ -1,3 +1,4 @@
+#include <core.h>
 #include <config.h>
 #include <gui/gui.h>
 #include <gui/style.h>
@@ -5,7 +6,6 @@
 #include <module.h>
 #include <signal_path/signal_path.h>
 #include <time.h>
-#include <options.h>
 #include "main.hpp"
 #include "utils.hpp"
 
@@ -20,7 +20,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 7, 0,
+    /* Version:         */ 0, 8, 0,
     /* Max instances    */ -1
 };
 
@@ -67,6 +67,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	dfm09decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 	ims100decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 	m10decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	imet4decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 
 	fmDemod.start();
 	resampler.start();
@@ -126,7 +127,8 @@ void
 RadiosondeDecoderModule::menuHandler(void *ctx)
 {
 	RadiosondeDecoderModule *_this = (RadiosondeDecoderModule*)ctx;
-	const float width = ImGui::GetContentRegionAvailWidth();
+	const ImVec2 wh = ImGui::GetContentRegionAvail();
+	const float width = wh.x;
 	char time[64];
 	bool gpxStatusChanged, ptuStatusChanged;
 
@@ -157,7 +159,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 		ImGui::Text("Serial no.");
 		if (_this->enabled) {
 			ImGui::TableNextColumn();
-			ImGui::Text(_this->lastData.serial.c_str());
+			ImGui::Text("%s", _this->lastData.serial.c_str());
 		}
 
 		ImGui::TableNextRow();
@@ -386,7 +388,6 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	config.conf[_this->name]["sondeType"] = selection;
 	config.release(true);
 
-
 	/* Get new bandwidth */
 	bw = std::get<1>(_this->supportedTypes[selection]);
 
@@ -410,7 +411,7 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 /* Module exports {{{ */
 MOD_EXPORT void _INIT_() {
     json def = json({});
-    config.setPath(options::opts.root + "/radiosonde_decoder_config.json");
+    config.setPath(core::args["root"].s() + "/radiosonde_decoder_config.json");
     config.load(def);
     config.enableAutoSave();
 }

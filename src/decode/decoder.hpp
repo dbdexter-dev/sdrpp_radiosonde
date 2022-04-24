@@ -8,6 +8,7 @@ extern "C" {
 #include "sondedump/include/rs41.h"
 #include "sondedump/include/ims100.h"
 #include "sondedump/include/m10.h"
+#include "sondedump/include/imet4.h"
 }
 
 #define LEN(x) (sizeof(x)/sizeof(*x))
@@ -38,6 +39,13 @@ namespace radiosonde {
 
 				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::registerInput(m_in);
 				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::_block_init = true;
+			}
+
+			void deinit(void) {
+				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::stop();
+				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::unregisterInput(m_in);
+
+				decoder_deinit(m_decoder);
 			}
 
 			int run() {
