@@ -20,7 +20,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 8, 0,
+    /* Version:         */ 0, 9, 0,
     /* Max instances    */ -1
 };
 
@@ -55,13 +55,10 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	bw = std::get<1>(supportedTypes[typeToSelect]);
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
-	fmDemod.init(vfo->output, bw, bw/2.0f);
+	fmDemod.init(vfo->output, bw, bw/2.0f, false);
 
 	/* Resampler to 48kHz */
-	window.init(bw, 1000, OUT_SAMPLE_RATE);
-	resampler.init(&fmDemod.out, &window, bw, OUT_SAMPLE_RATE);
-	window.setSampleRate(bw * resampler.getInterpolation());
-	resampler.updateWindow(&window);
+	resampler.init(&fmDemod.out, bw, OUT_SAMPLE_RATE);
 
 	rs41decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 	dfm09decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
@@ -398,9 +395,7 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->fmDemod.setInput(_this->vfo->output);
 	_this->fmDemod.start();
 
-	_this->resampler.setInSampleRate(bw);
-	_this->window.setSampleRate(bw * _this->resampler.getInterpolation());
-	_this->resampler.updateWindow(&_this->window);
+	_this->resampler.setInSamplerate(bw);
 
 	/* Spin up the appropriate decoder */
 	_this->activeDecoder = std::get<2>(_this->supportedTypes[selection]);

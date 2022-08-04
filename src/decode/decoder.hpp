@@ -18,14 +18,14 @@ static float altitude_to_pressure(float alt);
 
 namespace radiosonde {
 	template<typename T, T* (*decoder_init)(int), void (*decoder_deinit)(T*), ParserStatus (*decoder_get)(T*, SondeData*, const float*, size_t)>
-	class Decoder : public dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>> {
+	class Decoder : public dsp::block {
 		public:
 			Decoder() {}
 			~Decoder() {
-				if (!dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::_block_init) return;
-				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::stop();
-				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::unregisterInput(m_in);
-				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::_block_init = false;
+				if (!dsp::block::_block_init) return;
+				dsp::block::stop();
+				dsp::block::unregisterInput(m_in);
+				dsp::block::_block_init = false;
 
 				decoder_deinit(m_decoder);
 			}
@@ -37,13 +37,13 @@ namespace radiosonde {
 				m_decoder = decoder_init(samplerate);
 				m_count = m_offset = 0;
 
-				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::registerInput(m_in);
-				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::_block_init = true;
+				dsp::block::registerInput(m_in);
+				dsp::block::_block_init = true;
 			}
 
 			void deinit(void) {
-				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::stop();
-				dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>>::unregisterInput(m_in);
+				dsp::block::stop();
+				dsp::block::unregisterInput(m_in);
 
 				decoder_deinit(m_decoder);
 			}
@@ -52,8 +52,7 @@ namespace radiosonde {
 				SondeData fragment;
 				int count;
 
-				typedef dsp::generic_block<Decoder<T, decoder_init, decoder_deinit, decoder_get>> blocktype;
-				assert(blocktype::_block_init);
+				assert(dsp::block::_block_init);
 
 				if ((count = m_in->read()) < 0) return -1;
 

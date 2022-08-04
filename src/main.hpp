@@ -1,17 +1,17 @@
 #pragma once
 
 #include "dsp/block.h"
-#include "dsp/resampling.h"
 #include <module.h>
-#include <dsp/demodulator.h>
-#include <dsp/deframing.h>
+#include <dsp/multirate/polyphase_resampler.h>
+#include <dsp/demod/fm.h>
+#include <dsp/window/blackman.h>
 #include <signal_path/signal_path.h>
 #include "decode/decoder.hpp"
 #include "gpx.hpp"
 #include "ptu.hpp"
 
 /* Display name, bandwidth, decoder */
-typedef std::tuple<const char*, float, dsp::generic_unnamed_block*> sondespec_t;
+typedef std::tuple<const char*, float, dsp::block*> sondespec_t;
 
 class RadiosondeDecoderModule : public ModuleManager::Instance {
 public:
@@ -30,9 +30,8 @@ private:
 	char gpxFilename[2048];
 	char ptuFilename[2048];
 	VFOManager::VFO *vfo;
-	dsp::FloatFMDemod fmDemod;
-	dsp::filter_window::BlackmanWindow window;
-	dsp::PolyphaseResampler<float> resampler;
+	dsp::demod::FM<float> fmDemod;
+	dsp::multirate::RationalResampler<float> resampler;
 
 	radiosonde::Decoder<RS41Decoder, rs41_decoder_init, rs41_decoder_deinit, rs41_decode> rs41decoder;
 	radiosonde::Decoder<DFM09Decoder, dfm09_decoder_init, dfm09_decoder_deinit, dfm09_decode> dfm09decoder;
@@ -48,7 +47,7 @@ private:
 		sondespec_t("iMet-4", 2e4, &imet4decoder),
 	};
 	int selectedType = -1;
-	dsp::generic_unnamed_block *activeDecoder;
+	dsp::block *activeDecoder;
 
 	SondeFullData lastData;
 	GPXWriter gpxWriter;
