@@ -153,61 +153,6 @@ jobs:
         prerelease: false
 
 
-  build_ubuntu_hirsute:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: Create Docker image
-      run: cd ${{github.workspace}}/docker/ubuntu_hirsute && docker build . --tag sdrpp_build
-
-    - name: Run container
-      run: docker run --name build -v ${{github.workspace}}:/github/workspace --env BUILD_NO="-$GITHUB_RUN_NUMBER" -e PLUGIN_LOCATION="$GITHUB_WORKSPACE" sdrpp_build /root/do_build.sh
-
-    - name: Recover compiled binary
-      run: docker cp build:/root/SDRPlusPlus/build/decoder_modules/sdrpp_radiosonde/radiosonde_decoder.so ${{runner.workspace}}
-
-    - name: Attach artifacts to tag
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{github.ref}}
-        file: ${{runner.workspace}}/radiosonde_decoder.so
-        asset_name: radiosonde_decoder_ubuntu_hirsute.so
-        overwrite: false
-        prerelease: false
-
-
-
-  build_ubuntu_impish:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: Create Docker image
-      run: cd ${{github.workspace}}/docker/ubuntu_impish && docker build . --tag sdrpp_build
-
-    - name: Run container
-      run: docker run --name build -v ${{github.workspace}}:/github/workspace --env BUILD_NO="-$GITHUB_RUN_NUMBER" -e PLUGIN_LOCATION="$GITHUB_WORKSPACE" sdrpp_build /root/do_build.sh
-
-    - name: Recover compiled binary
-      run: docker cp build:/root/SDRPlusPlus/build/decoder_modules/sdrpp_radiosonde/radiosonde_decoder.so ${{runner.workspace}}
-
-    - name: Attach artifacts to tag
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{github.ref}}
-        file: ${{runner.workspace}}/radiosonde_decoder.so
-        asset_name: radiosonde_decoder_ubuntu_impish.so
-        overwrite: false
-        prerelease: false
 
 
 
