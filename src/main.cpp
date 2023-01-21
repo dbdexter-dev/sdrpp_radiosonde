@@ -11,8 +11,7 @@
 
 #define CONCAT(a, b)    ((std::string(a) + b).c_str())
 
-#define SNAP_INTERVAL 5000
-#define GARDNER_DAMP 0.707
+#define SNAP_INTERVAL 1000
 #define UNCAL_COLOR IM_COL32(255,234,0,255)
 #define OUT_SAMPLE_RATE 48000
 
@@ -20,7 +19,7 @@ SDRPP_MOD_INFO {
     /* Name:            */ "radiosonde_decoder",
     /* Description:     */ "Radiosonde decoder for SDR++",
     /* Author:          */ "dbdexter-dev",
-    /* Version:         */ 0, 9, 0,
+    /* Version:         */ 0, 10, 0,
     /* Max instances    */ -1
 };
 
@@ -392,6 +391,7 @@ RadiosondeDecoderModule::onTypeSelected(void *ctx, int selection)
 	_this->fmDemod.stop();
 	if (_this->vfo) sigpath::vfoManager.deleteVFO(_this->vfo);
 	_this->vfo = sigpath::vfoManager.createVFO(_this->name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
+	_this->vfo->setSnapInterval(SNAP_INTERVAL);
 	_this->fmDemod.setInput(_this->vfo->output);
 	_this->fmDemod.start();
 
