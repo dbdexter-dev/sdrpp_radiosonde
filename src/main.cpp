@@ -59,11 +59,13 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	/* Resampler to 48kHz */
 	resampler.init(&fmDemod.out, bw, OUT_SAMPLE_RATE);
 
-	rs41decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 	dfm09decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	c50decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	imet4decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 	ims100decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 	m10decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
-	imet4decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	mrzn1decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
+	rs41decoder.init(&resampler.out, OUT_SAMPLE_RATE, sondeDataHandler, this);
 
 	fmDemod.start();
 	resampler.start();

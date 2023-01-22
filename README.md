@@ -6,14 +6,17 @@ Radiosonde decoder plugin for SDR++
 Compatibility:
 --------------
 
-| Manufacturer | Model    | GPS                | Temperature        | Humidity           |
-|--------------|----------|--------------------|--------------------|--------------------|
-| Vaisala      | RS41-SG  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| Meteomodem   | M10/M20  | :heavy_check_mark: |                    |                    |
-| GRAW         | DFM06/09 | :heavy_check_mark: | :heavy_check_mark: |                    |
-| Meisei       | iMS-100  | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-| InterMet     | iMet-1/4 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-
+| Manufacturer | Model       | GPS                | Temperature        | Humidity           | XDATA              |
+|--------------|-------------|--------------------|--------------------|--------------------|--------------------|
+| Vaisala      | RS41-SG     | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| Meteomodem   | M10         | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
+| Meteomodem   | M20         | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
+| GRAW         | DFM06/09/17 | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
+| Meisei       | iMS-100     | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
+| Meisei       | RS-11G      | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |                    |
+| InterMet     | iMet-1/4    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| Meteolabor   | SRS-C50     | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
+| Meteo-Radiy  | MRZ-N1      | :heavy_check_mark: | :heavy_check_mark: |                    |                    |
 
 Installing
 ----------
