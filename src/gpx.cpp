@@ -40,7 +40,7 @@ GPXWriter::startTrack(const char *name)
 {
 	if (!m_fd) return;
 	if (m_trackActive && !strcmp(name, sondeSerial)) return;
-	for (int i=0; name[i] != '\0'; i++) if (!isalnum(name[i])) return;
+	for (int i=0; name[i] != '\0'; i++) if (!isgraph(name[i])) return;
 
 	if (m_trackActive) {
 		stopTrack();

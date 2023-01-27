@@ -243,7 +243,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			ImGui::Text("%.1f°C", _this->lastData.temp);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("Calibration data not yet available.");
+				ImGui::SetTooltip("Calibration data not yet complete (%.0f%%).", _this->lastData.calib_percent);
 			}
 		}
 
@@ -256,7 +256,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			ImGui::Text("%.1f%%", _this->lastData.rh);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("Calibration data not yet available.");
+				ImGui::SetTooltip("Calibration data not yet complete (%.0f%%).", _this->lastData.calib_percent);
 			}
 		}
 
@@ -269,7 +269,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			ImGui::Text("%.1f°C", _this->lastData.dewpt);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("Calibration data not yet available.");
+				ImGui::SetTooltip("Calibration data not yet complete (%.0f%%).", _this->lastData.calib_percent);
 			}
 		}
 
@@ -282,7 +282,7 @@ RadiosondeDecoderModule::menuHandler(void *ctx)
 			ImGui::Text("%.1fhPa", _this->lastData.pressure);
 			if (!_this->lastData.calibrated) ImGui::PopStyleColor();
 			if (!_this->lastData.calibrated && ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("Calibration data not yet available.");
+				ImGui::SetTooltip("Calibration data not yet complete (%.0f%%).", _this->lastData.calib_percent);
 			}
 		}
 

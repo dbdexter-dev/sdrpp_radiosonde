@@ -105,6 +105,10 @@ namespace radiosonde {
 						m_data.auxData = auxStream.str();
 					}
 
+					if (m_data.pressure <= 0) {
+						m_data.pressure = altitude_to_pressure(m_data.alt);
+					}
+
 					if (fragment.fields) {
 						m_callback(&m_data, m_ctx);
 					}
@@ -130,4 +134,41 @@ dewpt(float temp, float rh)
 {
 	const float tmp = (logf(rh / 100.0f) + (17.27f * temp / (237.3f + temp))) / 17.27f;
 	return 237.3f * tmp  / (1 - tmp);
+}
+static float
+altitude_to_pressure(float alt)
+{
+	const float g0 = 9.80665;
+	const float M = 0.0289644;
+	const float R_star = 8.3144598;
+
+	const float hbs[] = {0.0,      11000.0, 20000.0, 32000.0, 47000.0, 51000.0, 77000.0};
+	const float Lbs[] = {-0.0065,  0.0,     0.001,   0.0028,  0.0,     -0.0028, -0.002};
+	const float Pbs[] = {101325.0, 22632.1, 5474.89, 868.02,  110.91,  66.94,   3.96};
+	const float Tbs[] = {288.15,   216.65,  216.65,  228.65,  270.65,  270.65,  214.65};
+
+	float Lb, Pb, Tb, hb;
+	int b;
+
+	for (b=0; b<(int)LEN(Lbs)-1; b++) {
+		if (alt < hbs[b+1]) {
+			Lb = Lbs[b];
+			Pb = Pbs[b];
+			Tb = Tbs[b];
+			hb = hbs[b];
+			break;
+		}
+	}
+
+	if (b == (int)LEN(Lbs) - 1) {
+		Lb = Lbs[b];
+		Pb = Pbs[b];
+		Tb = Tbs[b];
+		hb = hbs[b];
+	}
+
+	if (Lb != 0) {
+		return 1e-2 * Pb * powf((Tb + Lb * (alt - hb)) / Tb, - (g0 * M) / (R_star * Lb));
+	}
+	return 1e-2 * Pb * expf(-g0 * M * (alt - hb) / (R_star * Tb));
 }
