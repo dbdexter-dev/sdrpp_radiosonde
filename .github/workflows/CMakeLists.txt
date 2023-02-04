@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.13)
 project(sdrpp)
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set(CMAKE_INSTALL_PREFIX "/usr/local")
-else()
-    set(CMAKE_INSTALL_PREFIX "/usr")
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set(CMAKE_INSTALL_PREFIX "/usr/local")
+    else()
+        set(CMAKE_INSTALL_PREFIX "/usr")
+    endif()
 endif()
 
 # Configure toolchain for android
@@ -30,16 +32,19 @@ option(OPT_BUILD_AIRSPYHF_SOURCE "Build Airspy HF+ Source Module (Dependencies: 
 option(OPT_BUILD_BLADERF_SOURCE "Build BladeRF Source Module (Dependencies: libbladeRF)" OFF)
 option(OPT_BUILD_FILE_SOURCE "Wav file source" ON)
 option(OPT_BUILD_HACKRF_SOURCE "Build HackRF Source Module (Dependencies: libhackrf)" ON)
+option(OPT_BUILD_HERMES_SOURCE "Build Hermes Source Module (no dependencies required)" ON)
 option(OPT_BUILD_LIMESDR_SOURCE "Build LimeSDR Source Module (Dependencies: liblimesuite)" OFF)
-option(OPT_BUILD_SDDC_SOURCE "Build SDDC Source Module (Dependencies: libusb-1.0)" OFF)
 option(OPT_BUILD_SDRPP_SERVER_SOURCE "Build SDR++ Server Source Module (no dependencies required)" ON)
 option(OPT_BUILD_RFSPACE_SOURCE "Build RFspace Source Module (no dependencies required)" ON)
 option(OPT_BUILD_RTL_SDR_SOURCE "Build RTL-SDR Source Module (Dependencies: librtlsdr)" ON)
 option(OPT_BUILD_RTL_TCP_SOURCE "Build RTL-TCP Source Module (no dependencies required)" ON)
 option(OPT_BUILD_SDRPLAY_SOURCE "Build SDRplay Source Module (Dependencies: libsdrplay)" OFF)
 option(OPT_BUILD_SOAPY_SOURCE "Build SoapySDR Source Module (Dependencies: soapysdr)" ON)
+option(OPT_BUILD_SPECTRAN_SOURCE "Build Spectran Source Module (Dependencies: Aaronia RTSA Suite)" OFF)
+option(OPT_BUILD_SPECTRAN_HTTP_SOURCE "Build Spectran HTTP Source Module (no dependencies required)" ON)
 option(OPT_BUILD_SPYSERVER_SOURCE "Build SpyServer Source Module (no dependencies required)" ON)
 option(OPT_BUILD_PLUTOSDR_SOURCE "Build PlutoSDR Source Module (Dependencies: libiio, libad9361)" ON)
+option(OPT_BUILD_USRP_SOURCE "Build USRP Source Module (libuhd)" OFF)
 
 # Sinks
 option(OPT_BUILD_ANDROID_AUDIO_SINK "Build Android Audio Sink Module (Dependencies: AAudio, only for android)" OFF)
@@ -49,9 +54,10 @@ option(OPT_BUILD_NETWORK_SINK "Build Audio Sink Module (no dependencies required
 option(OPT_BUILD_NEW_PORTAUDIO_SINK "Build the new PortAudio Sink Module (Dependencies: portaudio)" OFF)
 
 # Decoders
+option(OPT_BUILD_ATV_DECODER "Build ATV decoder (no dependencies required)" OFF)
 option(OPT_BUILD_FALCON9_DECODER "Build the falcon9 live decoder (Dependencies: ffplay)" OFF)
 option(OPT_BUILD_KG_SSTV_DECODER "Build the M17 decoder module (no dependencies required)" OFF)
-option(OPT_BUILD_M17_DECODER "Build the M17 decoder module (no dependencies required)" OFF)
+option(OPT_BUILD_M17_DECODER "Build the M17 decoder module (Dependencies: codec2)" OFF)
 option(OPT_BUILD_METEOR_DEMODULATOR "Build the meteor demodulator module (no dependencies required)" ON)
 option(OPT_BUILD_RADIO "Main audio modulation decoder (AM, FM, SSB, etc...)" ON)
 option(OPT_BUILD_WEATHER_SAT_DECODER "Build the HRPT decoder module (no dependencies required)" OFF)
@@ -61,8 +67,9 @@ option(OPT_BUILD_RADIOSONDE_DECODER "Build the radiosonde decoder module (no dep
 option(OPT_BUILD_DISCORD_PRESENCE "Build the Discord Rich Presence module" ON)
 option(OPT_BUILD_FREQUENCY_MANAGER "Build the Frequency Manager module" ON)
 option(OPT_BUILD_RECORDER "Audio and baseband recorder" ON)
+option(OPT_BUILD_RIGCTL_CLIENT "Rigctl client to make SDR++ act as a panadapter" OFF)
 option(OPT_BUILD_RIGCTL_SERVER "Rigctl backend for controlling SDR++ with software like gpredict" ON)
-option(OPT_BUILD_SCANNER "Frequency scanner" OFF)
+option(OPT_BUILD_SCANNER "Frequency scanner" ON)
 option(OPT_BUILD_SCHEDULER "Build the scheduler" OFF)
 
 # Other options
@@ -93,13 +100,13 @@ if (OPT_BUILD_HACKRF_SOURCE)
 add_subdirectory("source_modules/hackrf_source")
 endif (OPT_BUILD_HACKRF_SOURCE)
 
+if (OPT_BUILD_HERMES_SOURCE)
+add_subdirectory("source_modules/hermes_source")
+endif (OPT_BUILD_HERMES_SOURCE)
+
 if (OPT_BUILD_LIMESDR_SOURCE)
 add_subdirectory("source_modules/limesdr_source")
 endif (OPT_BUILD_LIMESDR_SOURCE)
-
-if (OPT_BUILD_SDDC_SOURCE)
-add_subdirectory("source_modules/sddc_source")
-endif (OPT_BUILD_SDDC_SOURCE)
 
 if (OPT_BUILD_SDRPP_SERVER_SOURCE)
 add_subdirectory("source_modules/sdrpp_server_source")
@@ -125,6 +132,14 @@ if (OPT_BUILD_SOAPY_SOURCE)
 add_subdirectory("source_modules/soapy_source")
 endif (OPT_BUILD_SOAPY_SOURCE)
 
+if (OPT_BUILD_SPECTRAN_SOURCE)
+add_subdirectory("source_modules/spectran_source")
+endif (OPT_BUILD_SPECTRAN_SOURCE)
+
+if (OPT_BUILD_SPECTRAN_HTTP_SOURCE)
+add_subdirectory("source_modules/spectran_http_source")
+endif (OPT_BUILD_SPECTRAN_HTTP_SOURCE)
+
 if (OPT_BUILD_SPYSERVER_SOURCE)
 add_subdirectory("source_modules/spyserver_source")
 endif (OPT_BUILD_SPYSERVER_SOURCE)
@@ -132,6 +147,10 @@ endif (OPT_BUILD_SPYSERVER_SOURCE)
 if (OPT_BUILD_PLUTOSDR_SOURCE)
 add_subdirectory("source_modules/plutosdr_source")
 endif (OPT_BUILD_PLUTOSDR_SOURCE)
+
+if (OPT_BUILD_USRP_SOURCE)
+add_subdirectory("source_modules/usrp_source")
+endif (OPT_BUILD_USRP_SOURCE)
 
 
 # Sink modules
@@ -157,6 +176,10 @@ endif (OPT_BUILD_NEW_PORTAUDIO_SINK)
 
 
 # Decoders
+if (OPT_BUILD_ATV_DECODER)
+add_subdirectory("decoder_modules/atv_decoder")
+endif (OPT_BUILD_ATV_DECODER)
+
 if (OPT_BUILD_FALCON9_DECODER)
 add_subdirectory("decoder_modules/falcon9_decoder")
 endif (OPT_BUILD_FALCON9_DECODER)
@@ -197,6 +220,10 @@ endif (OPT_BUILD_FREQUENCY_MANAGER)
 if (OPT_BUILD_RECORDER)
 add_subdirectory("misc_modules/recorder")
 endif (OPT_BUILD_RECORDER)
+
+if (OPT_BUILD_RIGCTL_CLIENT)
+add_subdirectory("misc_modules/rigctl_client")
+endif (OPT_BUILD_RIGCTL_CLIENT)
 
 if (OPT_BUILD_RIGCTL_SERVER)
 add_subdirectory("misc_modules/rigctl_server")
@@ -247,7 +274,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_custom_target(do_always ALL cp \"$<TARGET_FILE_DIR:sdrpp_core>/libsdrpp_core.dylib\" \"$<TARGET_FILE_DIR:sdrpp>\")
 endif ()
 
-# cmake .. "-DCMAKE_TOOLCHAIN_FILE=C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DOPT_BUILD_BLADERF_SOURCE=ON -DOPT_BUILD_LIMESDR_SOURCE=ON -DOPT_BUILD_SDRPLAY_SOURCE=ON -DOPT_BUILD_M17_DECODER=ON -DOPT_BUILD_SCANNER=ON -DOPT_BUILD_SCHEDULER=ON
+# cmake .. "-DCMAKE_TOOLCHAIN_FILE=C:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake" -DOPT_BUILD_BLADERF_SOURCE=ON -DOPT_BUILD_LIMESDR_SOURCE=ON -DOPT_BUILD_SDRPLAY_SOURCE=ON -DOPT_BUILD_M17_DECODER=ON -DOPT_BUILD_SCANNER=ON -DOPT_BUILD_SCHEDULER=ON -DOPT_BUILD_USRP_SOURCE=ON
 
 # Install directives
 install(TARGETS sdrpp DESTINATION bin)

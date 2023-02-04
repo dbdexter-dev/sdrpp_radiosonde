@@ -21,7 +21,8 @@ Compatibility:
 Installing
 ----------
 
-Binary releases for Windows and Linux (both x86-64 only) are available from
+Binary releases for Windows and Linux (both x86-64 only, built for [SDR++
+nightlies](https://github.com/AlexandreRouma/SDRPlusPlus/actions)) are available from
 [the Releases page](https://github.com/dbdexter-dev/sdrpp_radiosonde/releases).
 
 - **Windows**: download the `.dll` file from the latest release, and place it in
@@ -30,7 +31,7 @@ Binary releases for Windows and Linux (both x86-64 only) are available from
   the `/usr/lib/sdrpp/plugins` folder.
 
 The plugin can then be enabled from the module manager in SDR++, under the name
-*radiosonde\_decoder*
+*radiosonde\_decoder*.
 
 
 Building from source

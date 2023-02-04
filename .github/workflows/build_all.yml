@@ -34,7 +34,7 @@ jobs:
         file: ${{runner.workspace}}/radiosonde_decoder.so
         asset_name: radiosonde_decoder_debian_buster.so
         overwrite: false
-        prerelease: false
+        prerelease: true
 
 
 
@@ -63,7 +63,7 @@ jobs:
         file: ${{runner.workspace}}/radiosonde_decoder.so
         asset_name: radiosonde_decoder_debian_bullseye.so
         overwrite: false
-        prerelease: false
+        prerelease: true
 
 
 
@@ -92,7 +92,7 @@ jobs:
         file: ${{runner.workspace}}/radiosonde_decoder.so
         asset_name: radiosonde_decoder_debian_sid.so
         overwrite: false
-        prerelease: false
+        prerelease: true
 
 
 
@@ -121,7 +121,7 @@ jobs:
         file: ${{runner.workspace}}/radiosonde_decoder.so
         asset_name: radiosonde_decoder_ubuntu_bionic.so
         overwrite: false
-        prerelease: false
+        prerelease: true
 
 
 
@@ -150,7 +150,7 @@ jobs:
         file: ${{runner.workspace}}/radiosonde_decoder.so
         asset_name: radiosonde_decoder_ubuntu_focal.so
         overwrite: false
-        prerelease: false
+        prerelease: true
 
 
 
@@ -181,7 +181,7 @@ jobs:
         file: ${{runner.workspace}}/radiosonde_decoder.so
         asset_name: radiosonde_decoder_ubuntu_jammy.so
         overwrite: false
-        prerelease: false
+        prerelease: true
 
 
 
