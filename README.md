@@ -1,9 +1,11 @@
 Radiosonde decoder plugin for SDR++
 ===================================
 
+> This is a fork from the [dbdexter's radiosonde decoder repo](https://github.com/dbdexter-dev/sdrpp_radiosonde), used for compiling the macOS version of the plugin.
+
 ![radiosondeGPX](https://user-images.githubusercontent.com/17110004/144872708-2a578c62-5493-4845-9098-9328c4e914bf.png)
 
-Compatibility:
+Compatibility
 --------------
 
 | Manufacturer | Model       | GPS                | Temperature        | Humidity           | XDATA              |
@@ -33,27 +35,29 @@ nightlies](https://github.com/AlexandreRouma/SDRPlusPlus/actions)) are available
 The plugin can then be enabled from the module manager in SDR++, under the name
 *radiosonde\_decoder*.
 
-
 Building from source
 --------------------
 
 If no binary is available for your platform, you can build this plugin from
 source:
 
-1. Download the SDR++ source code: `git clone https://github.com/AlexandreRouma/SDRPlusPlus`
-2. Open the top-level `CMakeLists.txt` file, and add the following line in the
-   `# Decoders` section at the top:
-```
-option(OPT_BUILD_RADIOSONDE_DECODER "Build the radiosonde decoder module (no dependencies required)" ON)
-```
-3. In that same file, search for the second `# Decoders` section, and add the
-   following lines:
-```
-if (OPT_BUILD_RADIOSONDE_DECODER)
-add_subdirectory("decoder_modules/sdrpp_radiosonde")
-endif (OPT_BUILD_RADIOSONDE_DECODER)
-```
-4. Navigate to the `decoder_modules` folder, then clone this repository: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde --recurse-submodules`
-5. Build and install SDR++ following the guide in the original repository
-6. Enable the module by adding it via the module manager
+  1. Download the SDR++ source code: `git clone https://github.com/AlexandreRouma/SDRPlusPlus`
+  2. Open the top-level `CMakeLists.txt` file, and add the following line in the
+    `# Decoders` section at the top:
 
+  ```zsh
+  option(OPT_BUILD_RADIOSONDE_DECODER "Build the radiosonde decoder module (no dependencies required)" ON)
+  ```
+  
+  3. In that same file, search for the second `# Decoders` section, and add the
+    following lines:
+
+  ```zsh
+  if (OPT_BUILD_RADIOSONDE_DECODER)
+  add_subdirectory("decoder_modules/sdrpp_radiosonde")
+  endif (OPT_BUILD_RADIOSONDE_DECODER)
+  ```
+
+  4. Navigate to the `decoder_modules` folder, then clone this repository: `git clone https://github.com/dbdexter-dev/sdrpp_radiosonde --recurse-submodules`
+  5. Build and install SDR++ following the guide in the original repository
+  6. Enable the module by adding it via the module manager
