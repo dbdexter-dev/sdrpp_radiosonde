@@ -54,7 +54,7 @@ RadiosondeDecoderModule::RadiosondeDecoderModule(std::string name)
 	bw = std::get<1>(supportedTypes[typeToSelect]);
 	vfo = sigpath::vfoManager.createVFO(name, ImGui::WaterfallVFO::REF_CENTER, 0, bw, bw, bw, bw, true);
 	vfo->setSnapInterval(SNAP_INTERVAL);
-	fmDemod.init(vfo->output, bw, bw/2.0f, false);
+	fmDemod.init(vfo->output, bw, bw/2.0f, false, false);
 
 	/* Resampler to 48kHz */
 	resampler.init(&fmDemod.out, bw, OUT_SAMPLE_RATE);
